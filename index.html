@@ -53,21 +53,21 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.05);
+  transform: translate(-50%, -50%) scaleX(1.03);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(45px, 12.5vw, 190px);
+  font-size: clamp(22.5px, 6.25vw, 95px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #800020;
+  color: #7B1026;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 18px rgba(128, 0, 32, 0.22),
-    0 0 45px rgba(128, 0, 32, 0.15);
+    0 0 18px rgba(123, 16, 38, 0.22),
+    0 0 45px rgba(123, 16, 38, 0.15);
 }
 
 /* =========================================
@@ -98,20 +98,20 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.05);
+  transform: translate(-50%, -50%) scaleX(1.03);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(45px, 12.5vw, 190px);
+  font-size: clamp(22.5px, 6.25vw, 95px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #800020;
+  color: #7B1026;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 0.20;
+  opacity: 0.35;
   text-shadow:
-    0 0 12px rgba(128, 0, 32, 0.14);
+    0 0 12px rgba(123, 16, 38, 0.18);
 }
 
 #shift-loading {
@@ -133,8 +133,8 @@ body {
 @media (max-width: 600px) {
   #shift-title,
   #shift-title-front {
-    font-size: clamp(37.5px, 12.5vw, 90px);
-    transform: translate(-50%, -50%) scaleX(1.03);
+    font-size: clamp(18.75px, 6.25vw, 45px);
+    transform: translate(-50%, -50%) scaleX(1.02);
   }
 }
 </style>
@@ -680,7 +680,7 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.20 * textOpacity);
+  frontTitle.style.opacity = String(0.35 * textOpacity);
 
   renderer.render(scene, camera);
 });
