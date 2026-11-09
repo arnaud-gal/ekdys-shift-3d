@@ -7,19 +7,16 @@
 <title>EKDYS — SHIFT 3D</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
-  margin: 0;
-  padding: 0;
   width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
   background: transparent;
   border: 0;
-  outline: 0;
 }
 
 #shift-scene {
@@ -28,23 +25,16 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: transparent;
-  border: 0;
-  outline: 0;
 }
 
-/* Image de fond fixe */
 #shift-background {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url("./fond-ekdys.png");
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+  background: url("./fond-ekdys.png") center / cover no-repeat;
   pointer-events: none;
 }
 
-/* Le canvas ne reçoit aucune interaction */
 #shift-scene canvas {
   position: absolute;
   inset: 0;
@@ -55,22 +45,17 @@ html, body {
   pointer-events: none !important;
   touch-action: none;
   user-select: none;
-  border: 0;
-  outline: 0;
 }
 
 #shift-loading {
   position: absolute;
-  z-index: 2;
   inset: 0;
+  z-index: 2;
   display: grid;
   place-items: center;
-  padding: 20px;
   color: #aaa;
   font: 12px Arial, sans-serif;
   letter-spacing: 2px;
-  text-align: center;
-  white-space: pre-wrap;
   pointer-events: none;
 }
 </style>
@@ -92,7 +77,6 @@ html, body {
 </div>
 
 <script type="module">
-
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
@@ -102,8 +86,10 @@ const loading = document.querySelector("#shift-loading");
 
 const scene = new THREE.Scene();
 
-/* CAMÉRA */
+/* BRUME NOIRE TRÈS LÉGÈRE */
+scene.fog = new THREE.FogExp2(0x080808, 0.012);
 
+/* CAMÉRA */
 const camera = new THREE.PerspectiveCamera(
   32,
   container.clientWidth / container.clientHeight,
@@ -111,11 +97,10 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-const initialCameraZ = 4.5;
+const initialCameraZ = 5.6;
 camera.position.set(0, 0, initialCameraZ);
 
 /* RENDERER */
-
 const renderer = new THREE.WebGLRenderer({
   alpha: true,
   antialias: true,
@@ -126,32 +111,41 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
+renderer.toneMappingExposure = 1.0;
 renderer.setClearColor(0x000000, 0);
-
 renderer.domElement.style.pointerEvents = "none";
+
 container.appendChild(renderer.domElement);
 
-/* LUMIÈRES */
+/* ÉCLAIRAGE RENFORCÉ */
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x171717, 1.1));
+/* Lumière ambiante pour garder les noirs lisibles */
+scene.add(
+  new THREE.HemisphereLight(0xffffff, 0x242124, 1.5)
+);
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
-keyLight.position.set(2, 3, 4);
+/* Lumière principale : hautes lumières sur le tissu */
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.7);
+keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
-const rimLight = new THREE.DirectionalLight(0x9a263b, 0.65);
-rimLight.position.set(-3, 1, -2);
+/* Lumière latérale froide pour révéler les reliefs */
+const sideLight = new THREE.DirectionalLight(0xd9dce5, 1.15);
+sideLight.position.set(-4, 1.5, 2);
+scene.add(sideLight);
+
+/* Liseré bordeaux */
+const rimLight = new THREE.DirectionalLight(0x8f263b, 0.9);
+rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
-fillLight.position.set(-2, -1, 3);
+/* Lumière frontale douce */
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.65);
+fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
 
-/* CHARGEMENT DRACO */
-
+/* DRACO */
 const dracoLoader = new DRACOLoader();
-
 dracoLoader.setDecoderPath(
   "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
 );
@@ -160,25 +154,20 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
 /* VARIABLES */
-
 const clock = new THREE.Clock();
 
 let shirt = null;
 let baseScale = 1;
 let baseY = 0;
-
 let scrollTarget = 0;
 let scrollCurrent = 0;
 
-/* CHARGEMENT DU T-SHIRT */
-
+/* CHARGEMENT DU MODÈLE */
 loader.load(
   "./shift.glb",
 
   (gltf) => {
-
     try {
-
       shirt = gltf.scene;
 
       const bounds = new THREE.Box3().setFromObject(shirt);
@@ -190,12 +179,10 @@ loader.load(
       }
 
       /*
-       * T-SHIRT PLUS PETIT AU DÉPART
-       * Il doit être entièrement visible en haut de page.
+       * Modèle plus reculé et légèrement réduit.
+       * Centrage exact sur les trois axes.
        */
-
-      baseScale = 1.85 / Math.max(size.y, 0.001);
-
+      baseScale = 1.65 / Math.max(size.y, 0.001);
       shirt.scale.setScalar(baseScale);
 
       shirt.position.set(
@@ -206,21 +193,18 @@ loader.load(
 
       baseY = shirt.position.y;
 
-      /* VENT TRÈS DISCRET */
-
+      /* Vent très discret */
       shirt.traverse((object) => {
-
         if (!object.isMesh) return;
 
         object.frustumCulled = false;
 
-        const materialList = Array.isArray(object.material)
+        const materials = Array.isArray(object.material)
           ? object.material
           : [object.material];
 
-        materialList.forEach((material) => {
-
-          const windUniforms = {
+        materials.forEach((material) => {
+          const uniforms = {
             uTime: { value: 0 },
             uMinY: { value: bounds.min.y },
             uInvHeight: {
@@ -230,11 +214,10 @@ loader.load(
           };
 
           material.onBeforeCompile = (shader) => {
-
-            shader.uniforms.uTime = windUniforms.uTime;
-            shader.uniforms.uMinY = windUniforms.uMinY;
-            shader.uniforms.uInvHeight = windUniforms.uInvHeight;
-            shader.uniforms.uHeight = windUniforms.uHeight;
+            shader.uniforms.uTime = uniforms.uTime;
+            shader.uniforms.uMinY = uniforms.uMinY;
+            shader.uniforms.uInvHeight = uniforms.uInvHeight;
+            shader.uniforms.uHeight = uniforms.uHeight;
 
             material.userData.windShader = shader;
 
@@ -258,22 +241,15 @@ loader.load(
               );
 
               float hem = 1.0 - smoothstep(
-                0.12,
-                0.48,
-                heightRatio
+                0.12, 0.48, heightRatio
               );
 
               float sides = smoothstep(
-                0.25,
-                0.85,
-                abs(position.x) /
-                max(uHeight * 0.25, 0.001)
+                0.25, 0.85,
+                abs(position.x) / max(uHeight * 0.25, 0.001)
               );
 
-              float windWeight = max(
-                hem,
-                sides * 0.45
-              );
+              float weight = max(hem, sides * 0.45);
 
               float wave = sin(
                 uTime * 1.1 +
@@ -287,83 +263,58 @@ loader.load(
                 position.x * 2.4
               );
 
-              transformed.x +=
-                wave * windWeight * uHeight * 0.002;
-
-              transformed.z +=
-                wave2 * windWeight * uHeight * 0.0015;
+              transformed.x += wave * weight * uHeight * 0.002;
+              transformed.z += wave2 * weight * uHeight * 0.0015;
               `
             );
           };
 
-          material.customProgramCacheKey = () =>
-            "ekdys-shift-wind-v2";
-
+          material.customProgramCacheKey = () => "ekdys-shift-wind-v3";
           material.needsUpdate = true;
-
         });
       });
 
       scene.add(shirt);
-
       loading.style.display = "none";
 
-      console.log("EKDYS : modèle SHIFT chargé.");
+      console.log("EKDYS : SHIFT chargé.");
 
     } catch (error) {
-
-      loading.textContent =
-        "ERREUR DE CONFIGURATION : " + error.message;
-
-      console.error("Erreur modèle :", error);
-
+      loading.textContent = "ERREUR : " + error.message;
+      console.error(error);
     }
-
   },
 
   (progress) => {
-
     if (progress.total > 0) {
-      const percent = Math.round(
-        (progress.loaded / progress.total) * 100
-      );
-
-      loading.textContent = "EKDYS — LOADING " + percent + "%";
+      loading.textContent =
+        "EKDYS — LOADING " +
+        Math.round(progress.loaded / progress.total * 100) + "%";
     }
-
   },
 
   (error) => {
-
-    loading.textContent =
-      "ERREUR DE CHARGEMENT : " +
-      (error.message || "Impossible de lire le modèle 3D.");
-
+    loading.textContent = "ERREUR DE CHARGEMENT DU MODÈLE 3D";
     console.error("Erreur GLB :", error);
-
   }
 );
 
-/* RÉCEPTION DU SCROLL DE CARRD */
-
+/* RÉCEPTION DU SCROLL CARRD */
 window.addEventListener("message", (event) => {
-
-  if (event.data?.type === "EKDYS_SCROLL") {
-
+  if (
+    event.source === window.parent &&
+    event.data?.type === "EKDYS_SCROLL"
+  ) {
     scrollTarget = THREE.MathUtils.clamp(
       Number(event.data.progress) || 0,
       0,
       1
     );
-
   }
-
 });
 
-/* REDIMENSIONNEMENT */
-
+/* RESPONSIVE */
 function resize() {
-
   const width = container.clientWidth;
   const height = container.clientHeight;
 
@@ -371,28 +322,19 @@ function resize() {
 
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-
   renderer.setSize(width, height);
-
 }
 
 new ResizeObserver(resize).observe(container);
 
 /* ANIMATION */
-
 renderer.setAnimationLoop(() => {
-
   const time = clock.getElapsedTime();
 
-  /* Lissage du mouvement au scroll */
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.075;
 
   if (shirt) {
-
-    /* Actualisation du vent */
-
     shirt.traverse((object) => {
-
       if (!object.isMesh) return;
 
       const materials = Array.isArray(object.material)
@@ -400,58 +342,27 @@ renderer.setAnimationLoop(() => {
         : [object.material];
 
       materials.forEach((material) => {
-
         const shader = material.userData.windShader;
-
-        if (shader) {
-          shader.uniforms.uTime.value = time;
-        }
-
+        if (shader) shader.uniforms.uTime.value = time;
       });
-
     });
 
-    /*
-     * ROTATION :
-     * Pas de rotation automatique.
-     * Rotation au scroll divisée par 20.
-     */
+    /* Rotation très faible au scroll */
+    shirt.rotation.set(0, scrollCurrent * 0.003, 0);
 
-    shirt.rotation.set(0, 0, 0);
-
-    shirt.rotation.y = scrollCurrent * 0.003;
-
-    /*
-     * ZOOM PROGRESSIF :
-     * En haut : T-shirt éloigné et entièrement visible.
-     * En bas : T-shirt nettement plus grand.
-     */
-
+    /* Zoom progressif */
     const zoom = 1 + scrollCurrent * 0.55;
-
     shirt.scale.setScalar(baseScale * zoom);
 
-    /*
-     * RAPPROCHEMENT :
-     * Le T-shirt avance vers la caméra au fil du scroll.
-     */
-
+    /* Avance vers le spectateur */
     shirt.position.z = scrollCurrent * 0.55;
-
-    /* Position verticale stable */
-
     shirt.position.y = baseY;
 
-    /* Caméra légèrement rapprochée en complément */
-
     camera.position.z = initialCameraZ - scrollCurrent * 0.25;
-
   }
 
   renderer.render(scene, camera);
-
 });
-
 </script>
 </body>
 </html>
