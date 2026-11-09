@@ -151,14 +151,12 @@ function fitTitleText() {
 
     if (!context) return;
 
-    context.font =
-        `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
+    context.font = `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
 
     const measuredWidth = context.measureText("SHIFT").width;
     if (!measuredWidth) return;
 
-    const fontSize =
-        targetWidth / (measuredWidth / testFontSize);
+    const fontSize = targetWidth / (measuredWidth / testFontSize);
 
     title.style.fontSize = `${fontSize}px`;
     frontTitle.style.fontSize = `${fontSize}px`;
@@ -168,7 +166,7 @@ document.fonts.ready.then(fitTitleText);
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
-   CAMÉRA — ZOOM ×4
+   CAMÉRA — ZOOM ×20
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
@@ -178,11 +176,11 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/* Position initiale */
+/* Départ */
 const CAMERA_Z_FAR = 15.0;
 
-/* Position finale : zoom environ ×4 */
-const CAMERA_Z_CLOSE = 3.9;
+/* Arrivée : 15 / 0.75 = ×20 */
+const CAMERA_Z_CLOSE = 0.75;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -487,8 +485,7 @@ loader.load(
                                     wave * windWeight * uHeight * 0.006;
 
                                 transformed.z +=
-                                    wave2 * windWeight * uHeight * 0.004;
-                                `
+                                    wave2 * windWeight * uHeight * 0.004;`
                             );
 
                         /* COULEURS NATURELLES */
@@ -519,8 +516,7 @@ loader.load(
 
                                 diffuseColor.rgb = (
                                     diffuseColor.rgb - vec3(0.5)
-                                ) * uContrast + vec3(0.5);
-                                `
+                                ) * uContrast + vec3(0.5);`
                             );
                     };
 
@@ -617,10 +613,10 @@ renderer.setAnimationLoop(() => {
 
     const time = clock.getElapsedTime();
 
-    /* LISSAGE DU SCROLL */
+    /* RÉACTIVITÉ DU SCROLL — PLUS RAPIDE */
 
     scrollCurrent +=
-        (scrollTarget - scrollCurrent) * 0.09;
+        (scrollTarget - scrollCurrent) * 0.20;
 
     animatedShaders.forEach((shader) => {
         shader.uniforms.uTime.value = time;
@@ -634,25 +630,26 @@ renderer.setAnimationLoop(() => {
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM CAMÉRA ×4 */
+        /*
+          COURBE DE ZOOM ACCÉLÉRÉE
+          Le zoom commence plus tôt et s'intensifie
+          progressivement jusqu'à atteindre ×20.
+        */
 
-        camera.position.z = THREE.MathUtils.lerp(
-            CAMERA_Z_FAR,
-            CAMERA_Z_CLOSE,
-            scrollCurrent
-        );
+        const zoomProgress = Math.pow(scrollCurrent, 0.72);
 
-        /* AGRANDISSEMENT SUPPLÉMENTAIRE */
+        /* ZOOM CAMÉRA : 15 → 0.75 */
 
-        const zoomScale = THREE.MathUtils.lerp(
-            1.0,
-            1.04,
-            scrollCurrent
-        );
+        camera.position.z =
+            CAMERA_Z_FAR *
+            Math.pow(
+                CAMERA_Z_CLOSE / CAMERA_Z_FAR,
+                zoomProgress
+            );
 
-        shirtPivot.scale.setScalar(
-            shirtBaseScale * zoomScale
-        );
+        /* PAS DE SCALE SUPPLÉMENTAIRE :
+           le facteur ×20 vient de la caméra. */
+        shirtPivot.scale.setScalar(shirtBaseScale);
     }
 
     /* DISPARITION DES TEXTES */
