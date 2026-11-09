@@ -40,6 +40,8 @@ html, body {
     pointer-events: none;
 }
 
+/* TEXTE ARRIÈRE */
+
 #shift-title {
     position: absolute;
     z-index: 5;
@@ -65,6 +67,8 @@ html, body {
         0 0 25px rgba(154, 59, 50, 0.16);
 }
 
+/* T-SHIRT 3D */
+
 #shift-scene canvas {
     position: absolute;
     inset: 0;
@@ -76,6 +80,8 @@ html, body {
     touch-action: none;
     user-select: none;
 }
+
+/* TEXTE AVANT */
 
 #shift-title-front {
     position: absolute;
@@ -155,6 +161,7 @@ scene.fog = new THREE.FogExp2(0x080808, 0.002);
 ========================================= */
 
 function fitTitleText() {
+
     const availableWidth = container.clientWidth;
     if (!availableWidth) return;
 
@@ -193,11 +200,11 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/* ZOOM INITIAL */
+/* DISTANCE INITIALE */
 const CAMERA_Z_FAR = 15.0;
 
-/* ZOOM FINAL RENFORCÉ */
-const CAMERA_Z_CLOSE = 8.2;
+/* DISTANCE FINALE : +36,4 % D'AGRANDISSEMENT */
+const CAMERA_Z_CLOSE = 11.0;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -298,6 +305,7 @@ const animatedShaders = [];
 ========================================= */
 
 function updateShirtFit() {
+
     if (!shirtPivot || !shirtModel) return;
     if (modelSize.y <= 0 || modelSize.x <= 0) return;
 
@@ -321,6 +329,8 @@ function updateShirtFit() {
         modelSize.x * modelSize.x +
         modelSize.z * modelSize.z
     );
+
+    /* MARGES DE CADRAGE */
 
     const widthMargin = 0.60;
     const heightMargin = 0.60;
@@ -357,7 +367,9 @@ loader.load(
     "./shift.glb",
 
     (gltf) => {
+
         try {
+
             shirtModel = gltf.scene;
 
             const bounds = new THREE.Box3().setFromObject(shirtModel);
@@ -396,6 +408,7 @@ loader.load(
             ================================= */
 
             shirtModel.traverse((object) => {
+
                 if (!object.isMesh) return;
 
                 object.frustumCulled = false;
@@ -426,12 +439,26 @@ loader.load(
                 materials.forEach((material) => {
 
                     const windUniforms = {
+
                         uTime: { value: 0 },
+
                         uMinY: { value: meshMinY },
-                        uInvHeight: { value: 1 / meshHeight },
-                        uHeight: { value: meshHeight },
-                        uCenterX: { value: meshCenterX },
-                        uInvWidth: { value: 1 / meshWidth },
+
+                        uInvHeight: {
+                            value: 1 / meshHeight
+                        },
+
+                        uHeight: {
+                            value: meshHeight
+                        },
+
+                        uCenterX: {
+                            value: meshCenterX
+                        },
+
+                        uInvWidth: {
+                            value: 1 / meshWidth
+                        },
 
                         uSaturation: {
                             value: window.innerWidth >= 768
@@ -555,7 +582,9 @@ loader.load(
                         "ekdys-shift-color-wind-v11";
 
                     material.needsUpdate = true;
+
                 });
+
             });
 
             updateShirtFit();
@@ -566,27 +595,36 @@ loader.load(
             console.log("EKDYS SHIFT : modèle chargé.");
 
         } catch (error) {
+
             loading.textContent = "ERREUR : " + error.message;
             console.error("Erreur modèle :", error);
+
         }
+
     },
 
     (progress) => {
+
         if (progress.total > 0) {
+
             loading.textContent =
                 "EKDYS — LOADING " +
                 Math.round(
                     progress.loaded / progress.total * 100
                 ) +
                 "%";
+
         }
+
     },
 
     (error) => {
+
         loading.textContent =
             "ERREUR DE CHARGEMENT DU MODÈLE 3D";
 
         console.error("Erreur GLB :", error);
+
     }
 );
 
@@ -608,6 +646,7 @@ window.addEventListener("message", (event) => {
         0,
         1
     );
+
 });
 
 /* =========================================
@@ -615,6 +654,7 @@ window.addEventListener("message", (event) => {
 ========================================= */
 
 function resize() {
+
     const width = container.clientWidth;
     const height = container.clientHeight;
 
@@ -649,8 +689,12 @@ renderer.setAnimationLoop(() => {
 
     const time = clock.getElapsedTime();
 
+    /* LISSAGE DU SCROLL */
+
     scrollCurrent +=
         (scrollTarget - scrollCurrent) * 0.09;
+
+    /* ANIMATION DU TISSU */
 
     animatedShaders.forEach((shader) => {
         shader.uniforms.uTime.value = time;
@@ -664,7 +708,7 @@ renderer.setAnimationLoop(() => {
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM CAMÉRA RENFORCÉ */
+        /* ZOOM PROGRESSIF : +36,4 % */
 
         camera.position.z = THREE.MathUtils.lerp(
             CAMERA_Z_FAR,
@@ -672,17 +716,6 @@ renderer.setAnimationLoop(() => {
             scrollCurrent
         );
 
-        /* AGRANDISSEMENT SUPPLÉMENTAIRE */
-
-        const zoomScale = THREE.MathUtils.lerp(
-            1.0,
-            1.12,
-            scrollCurrent
-        );
-
-        shirtPivot.scale.setScalar(
-            shirtBaseScale * zoomScale
-        );
     }
 
     /* DISPARITION DES DEUX TEXTES */
@@ -709,6 +742,7 @@ renderer.setAnimationLoop(() => {
         String(0.40 * textOpacity);
 
     renderer.render(scene, camera);
+
 });
 
 </script>
