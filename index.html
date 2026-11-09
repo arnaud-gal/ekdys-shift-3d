@@ -53,21 +53,21 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.03);
+  transform: translate(-50%, -50%);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
   font-size: 100px;
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #A12D43;
+  color: #9A3B32;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 12px rgba(161, 45, 67, 0.25),
-    0 0 25px rgba(161, 45, 67, 0.18);
+    0 0 12px rgba(154, 59, 50, 0.24),
+    0 0 25px rgba(154, 59, 50, 0.16);
 }
 
 /* =========================================
@@ -87,7 +87,7 @@ body {
 }
 
 /* =========================================
-   TEXTE AVANT — OPACITÉ MAXIMALE
+   TEXTE AVANT — OPACITÉ 40 %
 ========================================= */
 
 #shift-title-front {
@@ -98,20 +98,20 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.03);
+  transform: translate(-50%, -50%);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
   font-size: 100px;
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #A12D43;
+  color: #9A3B32;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 1;
+  opacity: 0.40;
   text-shadow:
-    0 0 10px rgba(161, 45, 67, 0.18);
+    0 0 10px rgba(154, 59, 50, 0.15);
 }
 
 #shift-loading {
@@ -124,17 +124,6 @@ body {
   font: 12px Arial, sans-serif;
   letter-spacing: 2px;
   pointer-events: none;
-}
-
-/* =========================================
-   MOBILE
-========================================= */
-
-@media (max-width: 600px) {
-  #shift-title,
-  #shift-title-front {
-    transform: translate(-50%, -50%) scaleX(1.02);
-  }
 }
 </style>
 
@@ -180,45 +169,38 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
-   ADAPTATION AUTOMATIQUE DU TEXTE
+   AJUSTEMENT AUTOMATIQUE DU TEXTE
 ========================================= */
 
-function fitTitles() {
-  const availableWidth = container.clientWidth * 0.88;
+function fitTitleText() {
+  const availableWidth = container.clientWidth;
 
   if (!availableWidth) return;
 
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
+  const targetWidth = availableWidth * 0.94;
+  const testFontSize = 100;
+
+  const measureCanvas = document.createElement("canvas");
+  const context = measureCanvas.getContext("2d");
 
   if (!context) return;
 
-  const referenceSize = 100;
-
-  context.font = `${referenceSize}px "BBH Sans Bartle"`;
+  context.font = `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
 
   const measuredWidth = context.measureText("SHIFT").width;
 
   if (!measuredWidth) return;
 
-  const calculatedSize =
-    (availableWidth / measuredWidth) * referenceSize;
+  const fontSize = targetWidth / (measuredWidth / testFontSize);
 
-  const finalSize = Math.max(1, calculatedSize);
-
-  title.style.fontSize = `${finalSize}px`;
-  frontTitle.style.fontSize = `${finalSize}px`;
+  title.style.fontSize = `${fontSize}px`;
+  frontTitle.style.fontSize = `${fontSize}px`;
 }
 
 /* Attendre le chargement de la police avant de mesurer le mot */
+document.fonts.ready.then(fitTitleText);
 
-if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(() => {
-    fitTitles();
-  });
-}
-
-fitTitles();
+window.addEventListener("resize", fitTitleText);
 
 /* =========================================
    CAMÉRA RESPONSIVE
@@ -599,6 +581,7 @@ loader.load(
       });
 
       updateShirtFit();
+      fitTitleText();
 
       loading.style.display = "none";
 
@@ -665,7 +648,7 @@ function resize() {
     shader.uniforms.uSaturation.value = saturation;
   });
 
-  fitTitles();
+  fitTitleText();
   updateShirtFit();
 }
 
@@ -719,9 +702,7 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-
-  /* Texte avant : opacité maximale de 100 % */
-  frontTitle.style.opacity = String(textOpacity);
+  frontTitle.style.opacity = String(0.40 * textOpacity);
 
   renderer.render(scene, camera);
 });
