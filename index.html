@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -106,8 +106,11 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-const CAMERA_Z = 6.4;
-camera.position.set(0, 0, CAMERA_Z);
+/* Distance initiale et distance finale */
+const CAMERA_Z_FAR = 8.0;
+const CAMERA_Z_CLOSE = 6.4;
+
+camera.position.set(0, 0, CAMERA_Z_FAR);
 
 /* =========================================
    RENDERER
@@ -208,13 +211,13 @@ let scrollCurrent = 0;
 const INITIAL_ROTATION_Y = 0.34;
 const SCROLL_ROTATION_Y = 0.72;
 
-/* Références des shaders pour leur animation */
+/* Animation des shaders */
 const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
-   Le vêtement peut dépasser en haut,
-   mais reste contenu sur les côtés et en bas.
+   Le cadrage est calculé à la distance
+   finale, lorsque le T-shirt est rapproché.
 ========================================= */
 
 function updateShirtFit() {
@@ -231,25 +234,15 @@ function updateShirtFit() {
   const visibleHeight =
     2 *
     Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
-    CAMERA_Z;
+    CAMERA_Z_CLOSE;
 
   const visibleWidth = visibleHeight * aspect;
 
-  /* Largeur projetée après la rotation initiale */
   const rotatedWidth =
     Math.abs(modelSize.x * Math.cos(INITIAL_ROTATION_Y)) +
     Math.abs(modelSize.z * Math.sin(INITIAL_ROTATION_Y));
 
-  /*
-   * La largeur est prioritaire pour éviter
-   * toute coupure sur les côtés.
-   */
   const widthMargin = aspect < 0.75 ? 0.88 : 0.90;
-
-  /*
-   * Le vêtement est volontairement plus grand
-   * que la hauteur visible : il dépasse en haut.
-   */
   const heightMultiplier = aspect < 0.75 ? 1.12 : 1.20;
 
   const scaleByWidth =
@@ -264,10 +257,6 @@ function updateShirtFit() {
 
   shirtPivot.scale.setScalar(baseScale);
 
-  /*
-   * Ancrage du bas : le bas du T-shirt reste visible.
-   * Le haut peut sortir du cadre.
-   */
   const scaledHeight = modelSize.y * baseScale;
   const bottomAnchor = -visibleHeight * 0.43;
 
@@ -302,10 +291,6 @@ loader.load(
         throw new Error("Dimensions du modèle 3D invalides.");
       }
 
-      /*
-       * Pivot séparé :
-       * le modèle tourne autour de son propre centre.
-       */
       shirtPivot = new THREE.Group();
       shirtModel.position.copy(modelCenter).negate();
 
@@ -337,12 +322,10 @@ loader.load(
             },
             uHeight: { value: modelSize.y },
 
-            /* PC : saturation plus forte */
             uSaturation: {
               value: window.innerWidth >= 768 ? 2.25 : 1.85
             },
 
-            /* Contraste légèrement renforcé */
             uContrast: { value: 1.08 }
           };
 
@@ -358,7 +341,6 @@ loader.load(
             material.userData.windShader = shader;
             animatedShaders.push(shader);
 
-            /* Vertex shader : mouvement discret du tissu */
             shader.vertexShader = shader.vertexShader.replace(
               "#include <common>",
               `#include <common>
@@ -410,7 +392,6 @@ loader.load(
               `
             );
 
-            /* Fragment shader : saturation et contraste */
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <common>",
               `#include <common>
@@ -422,7 +403,6 @@ loader.load(
               "#include <color_fragment>",
               `#include <color_fragment>
 
-              /* Saturation */
               float luma = dot(
                 diffuseColor.rgb,
                 vec3(0.2126, 0.7152, 0.0722)
@@ -434,12 +414,10 @@ loader.load(
                 uSaturation
               );
 
-              /* Contraste léger */
               diffuseColor.rgb = (
                 diffuseColor.rgb - vec3(0.5)
               ) * uContrast + vec3(0.5);
 
-              /* Renforcement ciblé du rouge */
               float redDominance = smoothstep(
                 0.025,
                 0.20,
@@ -538,7 +516,6 @@ function resize() {
 
   renderer.setSize(width, height);
 
-  /* Mise à jour de la saturation selon l'écran */
   const saturation = width >= 768 ? 2.25 : 1.85;
 
   animatedShaders.forEach((shader) => {
@@ -558,6 +535,7 @@ window.addEventListener("resize", resize);
 renderer.setAnimationLoop(() => {
   const time = clock.getElapsedTime();
 
+  /* Lissage du scroll */
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
 
   animatedShaders.forEach((shader) => {
@@ -566,16 +544,21 @@ renderer.setAnimationLoop(() => {
 
   if (shirtPivot) {
 
-    /*
-     * Rotation initiale permanente
-     * + rotation supplémentaire au scroll.
-     *
-     * Aucun zoom.
-     * Aucune modification de la caméra.
-     */
+    /* Rotation progressive conservée */
     shirtPivot.rotation.y =
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
+
+    /*
+     * RAPPROCHEMENT :
+     * départ éloigné → arrivée proche.
+     * La caméra avance progressivement avec le scroll.
+     */
+    camera.position.z = THREE.MathUtils.lerp(
+      CAMERA_Z_FAR,
+      CAMERA_Z_CLOSE,
+      scrollCurrent
+    );
   }
 
   renderer.render(scene, camera);
@@ -584,3 +567,4 @@ renderer.setAnimationLoop(() => {
 
 </body>
 </html>
+```
