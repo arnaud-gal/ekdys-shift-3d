@@ -7,9 +7,7 @@
 <title>EKDYS — SHIFT 3D</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -41,17 +39,9 @@ html, body {
   padding: 20px;
   color: #aaa;
   font: 12px Arial, sans-serif;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-align: center;
-  line-height: 1.8;
   white-space: pre-wrap;
-  pointer-events: none;
-}
-
-#shift-loading.error {
-  color: #d58a96;
-  letter-spacing: 0.5px;
-  font-size: 11px;
 }
 </style>
 
@@ -68,56 +58,38 @@ html, body {
 <body>
 
 <div id="shift-scene">
-  <div id="shift-loading">EKDYS — INITIALISATION</div>
+  <div id="shift-loading">EKDYS — LOADING</div>
 </div>
 
 <script type="module">
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 const container = document.querySelector("#shift-scene");
 const loading = document.querySelector("#shift-loading");
 
-const MODEL_URL = new URL("./shift.glb", window.location.href).href;
-
-function showError(message) {
-  loading.classList.add("error");
-  loading.style.display = "grid";
-  loading.textContent = message;
-  console.error("[EKDYS SHIFT]", message);
-}
-
-function showStatus(message) {
-  loading.classList.remove("error");
-  loading.style.display = "grid";
-  loading.textContent = message;
-}
-
 const scene = new THREE.Scene();
+
+// CAMÉRA
 
 const camera = new THREE.PerspectiveCamera(
   32,
-  Math.max(container.clientWidth, 1) /
-  Math.max(container.clientHeight, 1),
+  container.clientWidth / container.clientHeight,
   0.01,
   100
 );
 
 camera.position.set(0, 0, 4.5);
 
-let renderer;
+// RENDERER
 
-try {
-  renderer = new THREE.WebGLRenderer({
-    alpha: true,
-    antialias: true,
-    powerPreference: "high-performance"
-  });
-} catch (error) {
-  showError("ERREUR : WebGL indisponible sur ce navigateur.");
-  throw error;
-}
+const renderer = new THREE.WebGLRenderer({
+  alpha: true,
+  antialias: true,
+  powerPreference: "high-performance"
+});
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -127,11 +99,9 @@ renderer.toneMappingExposure = 1.15;
 
 container.appendChild(renderer.domElement);
 
-// ÉCLAIRAGE
+// LUMIÈRES
 
-scene.add(
-  new THREE.HemisphereLight(0xffffff, 0x171717, 2)
-);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x171717, 2));
 
 const keyLight = new THREE.DirectionalLight(0xffffff, 3);
 keyLight.position.set(2, 3, 4);
@@ -145,6 +115,20 @@ const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
 fillLight.position.set(-2, -1, 3);
 scene.add(fillLight);
 
+// CHARGEMENT DU MODÈLE 3D AVEC DRACO
+
+const dracoLoader = new DRACOLoader();
+
+// Décodeur Draco hébergé sur le CDN Google
+dracoLoader.setDecoderPath(
+  "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
+);
+
+const loader = new GLTFLoader();
+
+// Association indispensable pour les GLB compressés avec Draco
+loader.setDRACOLoader(dracoLoader);
+
 // VARIABLES
 
 const clock = new THREE.Clock();
@@ -154,266 +138,183 @@ let baseScale = 1;
 let baseY = 0;
 let scrollProgress = 0;
 
-// CHARGEMENT ET VALIDATION DU GLB
+// CHARGEMENT
 
-async function loadShirt() {
+loader.load(
+  "./shift.glb",
 
-  try {
+  (gltf) => {
 
-    showStatus("EKDYS — TÉLÉCHARGEMENT DU MODÈLE");
+    try {
 
-    console.log("Adresse du modèle :", MODEL_URL);
+      shirt = gltf.scene;
 
-    const response = await fetch(MODEL_URL, {
-      cache: "no-store"
-    });
+      // DIMENSIONS DU MODÈLE
 
-    if (!response.ok) {
-      throw new Error(
-        "HTTP " + response.status +
-        " — Le fichier shift.glb est inaccessible."
-      );
-    }
+      const bounds = new THREE.Box3().setFromObject(shirt);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
 
-    const arrayBuffer = await response.arrayBuffer();
-
-    if (arrayBuffer.byteLength < 12) {
-      throw new Error(
-        "Fichier trop petit : le GLB semble incomplet."
-      );
-    }
-
-    // Vérification de la signature officielle GLB
-    const header = new DataView(arrayBuffer);
-
-    const magic = header.getUint32(0, true);
-    const version = header.getUint32(4, true);
-    const declaredLength = header.getUint32(8, true);
-
-    if (magic !== 0x46546C67) {
-      throw new Error(
-        "Le fichier téléchargé n'est pas un GLB valide. " +
-        "Sa signature est incorrecte."
-      );
-    }
-
-    if (version !== 2) {
-      throw new Error(
-        "Version GLB non prise en charge : " + version
-      );
-    }
-
-    if (declaredLength !== arrayBuffer.byteLength) {
-      throw new Error(
-        "Le fichier GLB semble incomplet ou corrompu. " +
-        "Taille annoncée : " + declaredLength +
-        " octets ; taille reçue : " + arrayBuffer.byteLength +
-        " octets."
-      );
-    }
-
-    showStatus("EKDYS — ANALYSE DU MODÈLE 3D");
-
-    const loader = new GLTFLoader();
-
-    loader.parse(
-      arrayBuffer,
-      new URL(".", MODEL_URL).href,
-
-      (gltf) => {
-
-        try {
-
-          shirt = gltf.scene;
-
-          const bounds = new THREE.Box3().setFromObject(shirt);
-          const size = bounds.getSize(new THREE.Vector3());
-          const center = bounds.getCenter(new THREE.Vector3());
-
-          if (
-            !Number.isFinite(size.y) ||
-            size.y <= 0
-          ) {
-            throw new Error(
-              "Le modèle ne possède pas de dimensions valides."
-            );
-          }
-
-          // CENTRAGE ET ÉCHELLE
-
-          baseScale = 2.35 / size.y;
-
-          shirt.scale.setScalar(baseScale);
-
-          shirt.position.set(
-            -center.x * baseScale,
-            -center.y * baseScale,
-            -center.z * baseScale
-          );
-
-          baseY = shirt.position.y;
-
-          // PRÉPARATION DU VENT
-
-          let meshCount = 0;
-
-          shirt.traverse((object) => {
-
-            if (!object.isMesh) return;
-
-            meshCount++;
-
-            object.frustumCulled = false;
-
-            object.geometry.computeBoundingBox();
-
-            const meshBounds = object.geometry.boundingBox;
-
-            const meshHeight = Math.max(
-              meshBounds.max.y - meshBounds.min.y,
-              0.001
-            );
-
-            const materials = Array.isArray(object.material)
-              ? object.material
-              : [object.material];
-
-            materials.forEach((material) => {
-
-              const windUniforms = {
-                uTime: { value: 0 },
-                uMinY: { value: meshBounds.min.y },
-                uInvHeight: { value: 1 / meshHeight },
-                uHeight: { value: meshHeight }
-              };
-
-              material.onBeforeCompile = (shader) => {
-
-                shader.uniforms.uTime = windUniforms.uTime;
-                shader.uniforms.uMinY = windUniforms.uMinY;
-                shader.uniforms.uInvHeight = windUniforms.uInvHeight;
-                shader.uniforms.uHeight = windUniforms.uHeight;
-
-                material.userData.windShader = shader;
-
-                shader.vertexShader = shader.vertexShader.replace(
-                  "#include <common>",
-                  `#include <common>
-                  uniform float uTime;
-                  uniform float uMinY;
-                  uniform float uInvHeight;
-                  uniform float uHeight;`
-                );
-
-                shader.vertexShader = shader.vertexShader.replace(
-                  "#include <begin_vertex>",
-                  `#include <begin_vertex>
-
-                  float heightRatio = clamp(
-                    (position.y - uMinY) * uInvHeight,
-                    0.0,
-                    1.0
-                  );
-
-                  // Mobilité du bas du vêtement
-                  float hem = 1.0 - smoothstep(
-                    0.12,
-                    0.48,
-                    heightRatio
-                  );
-
-                  // Mobilité légère des côtés
-                  float sides = smoothstep(
-                    0.25,
-                    0.85,
-                    abs(position.x) /
-                    max(uHeight * 0.25, 0.001)
-                  );
-
-                  float windWeight = max(
-                    hem,
-                    sides * 0.45
-                  );
-
-                  float wave = sin(
-                    uTime * 1.35 +
-                    position.y * 3.0 +
-                    position.x * 2.0
-                  );
-
-                  float wave2 = sin(
-                    uTime * 0.85 +
-                    position.y * 1.7 -
-                    position.x * 2.4
-                  );
-
-                  transformed.x +=
-                    wave * windWeight * uHeight * 0.008;
-
-                  transformed.z +=
-                    wave2 * windWeight * uHeight * 0.006;
-                  `
-                );
-              };
-
-              material.customProgramCacheKey = () =>
-                "ekdys-shift-wind-v2";
-
-              material.needsUpdate = true;
-
-            });
-
-          });
-
-          if (meshCount === 0) {
-            throw new Error(
-              "Le fichier GLB ne contient aucun mesh 3D."
-            );
-          }
-
-          scene.add(shirt);
-
-          loading.style.display = "none";
-
-          console.log("Modèle chargé avec succès.");
-          console.log("Nombre de meshes :", meshCount);
-          console.log("Dimensions :", size);
-          console.log("Taille du fichier :", arrayBuffer.byteLength);
-
-        } catch (error) {
-
-          showError(
-            "ERREUR DE CONFIGURATION DU MODÈLE :\n" +
-            error.message
-          );
-
-        }
-
-      },
-
-      (error) => {
-
-        showError(
-          "ERREUR DE LECTURE DU GLB :\n" +
-          (error?.message || String(error))
-        );
-
+      if (!Number.isFinite(size.y) || size.y <= 0) {
+        throw new Error("Dimensions du modèle 3D invalides.");
       }
 
-    );
+      // CENTRAGE ET MISE À L'ÉCHELLE
 
-  } catch (error) {
+      baseScale = 2.35 / Math.max(size.y, 0.001);
 
-    showError(
-      "ÉCHEC DU CHARGEMENT :\n" +
-      (error?.message || String(error))
-    );
+      shirt.scale.setScalar(baseScale);
+
+      shirt.position.set(
+        -center.x * baseScale,
+        -center.y * baseScale,
+        -center.z * baseScale
+      );
+
+      baseY = shirt.position.y;
+
+      // PRÉPARATION DE L'EFFET DE VENT
+
+      shirt.traverse((object) => {
+
+        if (!object.isMesh) return;
+
+        object.frustumCulled = false;
+
+        const materialList = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+
+        materialList.forEach((material) => {
+
+          const windUniforms = {
+            uTime: { value: 0 },
+            uMinY: { value: bounds.min.y },
+            uInvHeight: {
+              value: 1 / Math.max(size.y, 0.001)
+            },
+            uHeight: { value: size.y }
+          };
+
+          material.onBeforeCompile = (shader) => {
+
+            shader.uniforms.uTime = windUniforms.uTime;
+            shader.uniforms.uMinY = windUniforms.uMinY;
+            shader.uniforms.uInvHeight = windUniforms.uInvHeight;
+            shader.uniforms.uHeight = windUniforms.uHeight;
+
+            material.userData.windShader = shader;
+
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              `#include <common>
+              uniform float uTime;
+              uniform float uMinY;
+              uniform float uInvHeight;
+              uniform float uHeight;`
+            );
+
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <begin_vertex>",
+              `#include <begin_vertex>
+
+              float heightRatio = clamp(
+                (position.y - uMinY) * uInvHeight,
+                0.0,
+                1.0
+              );
+
+              // Mobilité du bas du T-shirt
+              float hem = 1.0 - smoothstep(
+                0.12,
+                0.48,
+                heightRatio
+              );
+
+              // Réaction légère des bords latéraux
+              float sides = smoothstep(
+                0.25,
+                0.85,
+                abs(position.x) /
+                max(uHeight * 0.25, 0.001)
+              );
+
+              float windWeight = max(
+                hem,
+                sides * 0.45
+              );
+
+              float wave = sin(
+                uTime * 1.35 +
+                position.y * 3.0 +
+                position.x * 2.0
+              );
+
+              float wave2 = sin(
+                uTime * 0.85 +
+                position.y * 1.7 -
+                position.x * 2.4
+              );
+
+              transformed.x +=
+                wave * windWeight * uHeight * 0.008;
+
+              transformed.z +=
+                wave2 * windWeight * uHeight * 0.006;
+              `
+            );
+
+          };
+
+          material.customProgramCacheKey = () =>
+            "ekdys-shift-wind-v1";
+
+          material.needsUpdate = true;
+
+        });
+
+      });
+
+      scene.add(shirt);
+
+      loading.style.display = "none";
+
+      console.log("EKDYS : modèle SHIFT chargé.");
+      console.log("Dimensions :", size);
+
+    } catch (error) {
+
+      loading.textContent =
+        "ERREUR DE CONFIGURATION : " + error.message;
+
+      console.error("Erreur modèle :", error);
+
+    }
+
+  },
+
+  (progress) => {
+
+    if (progress.total > 0) {
+      const percent = Math.round(
+        (progress.loaded / progress.total) * 100
+      );
+
+      loading.textContent = "EKDYS — LOADING " + percent + "%";
+    }
+
+  },
+
+  (error) => {
+
+    loading.textContent =
+      "ERREUR DE CHARGEMENT : " +
+      (error.message || "Impossible de lire le modèle 3D.");
+
+    console.error("Erreur GLB :", error);
 
   }
-
-}
-
-loadShirt();
+);
 
 // RÉCEPTION DU SCROLL DE CARRD
 
@@ -457,6 +358,7 @@ renderer.setAnimationLoop(() => {
 
   if (shirt) {
 
+    // Actualisation des uniformes du vent
     shirt.traverse((object) => {
 
       if (!object.isMesh) return;
@@ -477,7 +379,7 @@ renderer.setAnimationLoop(() => {
 
     });
 
-    // Rotation subtile
+    // Rotation douce permanente
 
     shirt.rotation.y =
       Math.sin(time * 0.35) * 0.025 +
@@ -491,7 +393,7 @@ renderer.setAnimationLoop(() => {
     shirt.position.y =
       baseY + Math.sin(time * 0.8) * 0.018;
 
-    // Rapprochement au scroll
+    // Rapprochement progressif au scroll
 
     const zoom = 1 + scrollProgress * 0.12;
 
@@ -506,5 +408,6 @@ renderer.setAnimationLoop(() => {
 });
 
 </script>
+
 </body>
 </html>
