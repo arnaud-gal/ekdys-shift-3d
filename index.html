@@ -168,7 +168,7 @@ document.fonts.ready.then(fitTitleText);
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
-   CAMÉRA — ZOOM +116 %
+   CAMÉRA — ZOOM TRÈS IMPORTANT
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
@@ -178,11 +178,11 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/* Position initiale */
+/* Distance initiale */
 const CAMERA_Z_FAR = 15.0;
 
-/* Position finale */
-const CAMERA_Z_CLOSE = 7.3;
+/* Distance finale : beaucoup plus proche */
+const CAMERA_Z_CLOSE = 4.5;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -525,7 +525,7 @@ loader.load(
                     };
 
                     material.customProgramCacheKey = () =>
-                        "ekdys-shift-color-wind-v11";
+                        "ekdys-shift-color-wind-v12";
 
                     material.needsUpdate = true;
                 });
@@ -646,7 +646,7 @@ renderer.setAnimationLoop(() => {
 
         const zoomScale = THREE.MathUtils.lerp(
             1.0,
-            1.05,
+            1.20,
             scrollCurrent
         );
 
