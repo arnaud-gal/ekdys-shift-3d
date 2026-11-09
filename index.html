@@ -23,7 +23,6 @@ body {
   padding: 0;
   overflow: hidden;
   background: transparent;
-  border: 0;
 }
 
 #shift-scene {
@@ -34,6 +33,8 @@ body {
   background: transparent;
 }
 
+/* FOND */
+
 #shift-background {
   position: absolute;
   inset: 0;
@@ -43,27 +44,30 @@ body {
 }
 
 /* =========================================
-   TEXTE CINÉMATIQUE SHIFT
-   Environ 80 % de la largeur de la fenêtre
+   TEXTE SHIFT
+   Devant le fond, derrière le T-shirt
 ========================================= */
 
 #shift-title {
   position: absolute;
-  z-index: 1;
+  z-index: 5;
 
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
 
-  width: 80%;
+  width: 100%;
   text-align: center;
 
-  font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(48px, 22vw, 320px);
-  line-height: 0.9;
-  letter-spacing: 0;
+  transform: translate(-50%, -50%) scaleX(1.15);
+  transform-origin: center center;
 
-  color: #c00024;
+  font-family: "BBH Sans Bartle", sans-serif;
+  font-size: clamp(90px, 25vw, 380px);
+  font-weight: normal;
+  line-height: 0.85;
+  letter-spacing: -0.025em;
+
+  color: #d0002b;
 
   white-space: nowrap;
   pointer-events: none;
@@ -72,18 +76,16 @@ body {
   opacity: 1;
 
   text-shadow:
-    0 0 20px rgba(192, 0, 36, 0.28),
-    0 0 55px rgba(192, 0, 36, 0.20);
-
-  transition: none;
+    0 0 18px rgba(208, 0, 43, 0.22),
+    0 0 45px rgba(208, 0, 43, 0.15);
 }
 
-/* Canvas du T-shirt au premier plan */
+/* CANVAS 3D : AU-DESSUS DU TEXTE */
 
 #shift-scene canvas {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 6;
   display: block;
   width: 100%;
   height: 100%;
@@ -92,10 +94,12 @@ body {
   user-select: none;
 }
 
+/* CHARGEMENT */
+
 #shift-loading {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 7;
   display: grid;
   place-items: center;
   color: #ddd;
@@ -106,7 +110,8 @@ body {
 
 @media (max-width: 600px) {
   #shift-title {
-    font-size: clamp(48px, 22vw, 125px);
+    font-size: clamp(75px, 25vw, 180px);
+    transform: translate(-50%, -50%) scaleX(1.08);
   }
 }
 </style>
@@ -156,8 +161,6 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-/* Départ plus éloigné */
-
 const CAMERA_Z_FAR = 13.0;
 const CAMERA_Z_CLOSE = 6.4;
 
@@ -184,14 +187,14 @@ renderer.setSize(
 
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
+renderer.toneMappingExposure = 1.15;
 renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
 container.appendChild(renderer.domElement);
 
 /* =========================================
-   ÉCLAIRAGE RENFORCÉ
+   ÉCLAIRAGE
 ========================================= */
 
 scene.add(
@@ -202,40 +205,23 @@ scene.add(
   )
 );
 
-const keyLight = new THREE.DirectionalLight(
-  0xffffff,
-  3.2
-);
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
 keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
-const sideLight = new THREE.DirectionalLight(
-  0xe8eaf2,
-  1.8
-);
+const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.8);
 sideLight.position.set(-4, 1.5, 2);
 scene.add(sideLight);
 
-const rimLight = new THREE.DirectionalLight(
-  0xd43b58,
-  1.4
-);
+const rimLight = new THREE.DirectionalLight(0xd43b58, 1.4);
 rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(
-  0xffffff,
-  1.2
-);
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
 fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
 
-/* Lumière frontale douce */
-
-const frontLight = new THREE.DirectionalLight(
-  0xffffff,
-  0.8
-);
+const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
 frontLight.position.set(0, 2, 6);
 scene.add(frontLight);
 
@@ -261,7 +247,6 @@ const clock = new THREE.Clock();
 let shirtPivot = null;
 let shirtModel = null;
 
-let baseScale = 1;
 let modelSize = new THREE.Vector3();
 
 let scrollTarget = 0;
@@ -309,7 +294,7 @@ function updateShirtFit() {
     (visibleHeight * heightMultiplier) /
     Math.max(modelSize.y, 0.001);
 
-  baseScale = Math.min(scaleByWidth, scaleByHeight);
+  const baseScale = Math.min(scaleByWidth, scaleByHeight);
 
   shirtPivot.scale.setScalar(baseScale);
 
@@ -402,7 +387,7 @@ loader.load(
               value: window.innerWidth >= 768 ? 2.25 : 1.85
             },
 
-            uContrast: { value: 1.18 }
+            uContrast: { value: 1.04 }
           };
 
           material.onBeforeCompile = (shader) => {
@@ -419,8 +404,6 @@ loader.load(
             material.userData.windShader = shader;
             animatedShaders.push(shader);
 
-            /* Variables du vent */
-
             shader.vertexShader = shader.vertexShader.replace(
               "#include <common>",
               `#include <common>
@@ -432,8 +415,6 @@ loader.load(
               uniform float uInvWidth;`
             );
 
-            /* Déformation du tissu */
-
             shader.vertexShader = shader.vertexShader.replace(
               "#include <begin_vertex>",
               `#include <begin_vertex>
@@ -444,13 +425,9 @@ loader.load(
                 1.0
               );
 
-              /* Le bas du T-shirt réagit davantage au vent */
-
               float hem = 1.0 - smoothstep(
                 0.10, 0.55, heightRatio
               );
-
-              /* Les côtés du tissu réagissent également */
 
               float sideRatio = abs(
                 (position.x - uCenterX) * uInvWidth
@@ -465,8 +442,6 @@ loader.load(
                 sides * 0.65
               );
 
-              /* Deux mouvements ondulatoires */
-
               float wave = sin(
                 uTime * 1.15 +
                 position.y * 3.0 +
@@ -479,8 +454,6 @@ loader.load(
                 position.x * 2.4
               );
 
-              /* Déformation douce mais visible */
-
               transformed.x +=
                 wave * windWeight * uHeight * 0.006;
 
@@ -489,16 +462,12 @@ loader.load(
               `
             );
 
-            /* Variables de couleur */
-
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <common>",
               `#include <common>
               uniform float uSaturation;
               uniform float uContrast;`
             );
-
-            /* Saturation et contraste */
 
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <color_fragment>",
@@ -518,8 +487,6 @@ loader.load(
               diffuseColor.rgb = (
                 diffuseColor.rgb - vec3(0.5)
               ) * uContrast + vec3(0.5);
-
-              /* Renforcement ciblé du rouge */
 
               float redDominance = smoothstep(
                 0.025,
@@ -552,7 +519,7 @@ loader.load(
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v7";
+            "ekdys-shift-color-wind-v8";
 
           material.needsUpdate = true;
         });
@@ -640,21 +607,15 @@ renderer.setAnimationLoop(() => {
 
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
 
-  /* Animation continue du vent */
-
   animatedShaders.forEach((shader) => {
     shader.uniforms.uTime.value = time;
   });
 
   if (shirtPivot) {
 
-    /* Rotation progressive au scroll */
-
     shirtPivot.rotation.y =
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
-
-    /* Rapprochement progressif */
 
     camera.position.z = THREE.MathUtils.lerp(
       CAMERA_Z_FAR,
@@ -663,11 +624,7 @@ renderer.setAnimationLoop(() => {
     );
   }
 
-  /* =====================================
-     DISPARITION DU TEXTE SHIFT
-     Début : 50 %
-     Fin : 78 %
-  ===================================== */
+  /* DISPARITION DU TEXTE AU SCROLL */
 
   const fadeStart = 0.50;
   const fadeEnd = 0.78;
