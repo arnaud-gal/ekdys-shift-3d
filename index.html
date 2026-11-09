@@ -56,18 +56,18 @@ body {
   transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(2.8px, 0.78125vw, 11.875px);
+  font-size: clamp(5.625px, 1.5625vw, 23.75px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #702638;
+  color: #8A1F32;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 8px rgba(112, 38, 56, 0.22),
-    0 0 16px rgba(112, 38, 56, 0.15);
+    0 0 12px rgba(138, 31, 50, 0.22),
+    0 0 25px rgba(138, 31, 50, 0.15);
 }
 
 /* =========================================
@@ -87,7 +87,7 @@ body {
 }
 
 /* =========================================
-   TEXTE AVANT — OPACITÉ 35 %
+   TEXTE AVANT — OPACITÉ 70 %
 ========================================= */
 
 #shift-title-front {
@@ -101,17 +101,17 @@ body {
   transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(2.8px, 0.78125vw, 11.875px);
+  font-size: clamp(5.625px, 1.5625vw, 23.75px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #702638;
+  color: #8A1F32;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 0.35;
+  opacity: 0.70;
   text-shadow:
-    0 0 8px rgba(112, 38, 56, 0.12);
+    0 0 10px rgba(138, 31, 50, 0.12);
 }
 
 #shift-loading {
@@ -133,7 +133,7 @@ body {
 @media (max-width: 600px) {
   #shift-title,
   #shift-title-front {
-    font-size: clamp(2.34px, 0.78125vw, 5.625px);
+    font-size: clamp(4.6875px, 1.5625vw, 11.25px);
     transform: translate(-50%, -50%) scaleX(1.03);
   }
 }
@@ -678,7 +678,7 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.35 * textOpacity);
+  frontTitle.style.opacity = String(0.70 * textOpacity);
 
   renderer.render(scene, camera);
 });
