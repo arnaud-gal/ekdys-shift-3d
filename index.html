@@ -11,13 +11,15 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
   background: transparent;
+  border: 0;
 }
 
 #shift-scene {
@@ -72,6 +74,7 @@ html, body {
 </head>
 
 <body>
+
 <div id="shift-scene">
   <div id="shift-background"></div>
   <div id="shift-loading">EKDYS — LOADING</div>
@@ -90,13 +93,11 @@ const container = document.querySelector("#shift-scene");
 const loading = document.querySelector("#shift-loading");
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x080808, 0.006);
+scene.fog = new THREE.FogExp2(0x080808, 0.005);
 
 /* =========================================
    CAMÉRA
 ========================================= */
-
-const INITIAL_CAMERA_Z = 6.4;
 
 const camera = new THREE.PerspectiveCamera(
   32,
@@ -105,7 +106,8 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-camera.position.set(0, 0, INITIAL_CAMERA_Z);
+const CAMERA_Z = 6.4;
+camera.position.set(0, 0, CAMERA_Z);
 
 /* =========================================
    RENDERER
@@ -117,11 +119,18 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance"
 });
 
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio || 1, 1.5)
+);
+
+renderer.setSize(
+  container.clientWidth,
+  container.clientHeight
+);
+
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.0;
 renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
@@ -132,27 +141,43 @@ container.appendChild(renderer.domElement);
 ========================================= */
 
 scene.add(
-  new THREE.HemisphereLight(0xffffff, 0x252027, 1.55)
+  new THREE.HemisphereLight(
+    0xffffff,
+    0x252027,
+    1.35
+  )
 );
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.3);
+const keyLight = new THREE.DirectionalLight(
+  0xffffff,
+  2.7
+);
 keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
-const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.65);
+const sideLight = new THREE.DirectionalLight(
+  0xe8eaf2,
+  1.45
+);
 sideLight.position.set(-4, 1.5, 2);
 scene.add(sideLight);
 
-const rimLight = new THREE.DirectionalLight(0xb52a42, 1.15);
+const rimLight = new THREE.DirectionalLight(
+  0xb52a42,
+  1.1
+);
 rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.85);
+const fillLight = new THREE.DirectionalLight(
+  0xffffff,
+  0.8
+);
 fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
 
 /* =========================================
-   DRACO
+   CHARGEMENT DRACO
 ========================================= */
 
 const dracoLoader = new DRACOLoader();
@@ -170,28 +195,31 @@ loader.setDRACOLoader(dracoLoader);
 
 const clock = new THREE.Clock();
 
-let pivot = null;
-let model = null;
+let shirtPivot = null;
+let shirtModel = null;
 
 let baseScale = 1;
 let modelSize = new THREE.Vector3();
+let modelCenter = new THREE.Vector3();
 
 let scrollTarget = 0;
 let scrollCurrent = 0;
 
-/*
-  Rotation initiale : environ 24 degrés.
-  Rotation supplémentaire au scroll : environ 36 degrés.
-*/
-const INITIAL_ROTATION_Y = -0.42;
-const SCROLL_ROTATION_Y = -0.62;
+const INITIAL_ROTATION_Y = 0.34;
+const SCROLL_ROTATION_Y = 0.72;
+
+/* Références des shaders pour leur animation */
+const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
+   Le vêtement peut dépasser en haut,
+   mais reste contenu sur les côtés et en bas.
 ========================================= */
 
 function updateShirtFit() {
-  if (!pivot || !model || modelSize.y <= 0) return;
+  if (!shirtPivot || !shirtModel) return;
+  if (modelSize.y <= 0) return;
 
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -203,46 +231,55 @@ function updateShirtFit() {
   const visibleHeight =
     2 *
     Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
-    INITIAL_CAMERA_Z;
+    CAMERA_Z;
 
   const visibleWidth = visibleHeight * aspect;
 
+  /* Largeur projetée après la rotation initiale */
   const rotatedWidth =
     Math.abs(modelSize.x * Math.cos(INITIAL_ROTATION_Y)) +
     Math.abs(modelSize.z * Math.sin(INITIAL_ROTATION_Y));
 
   /*
-    On réserve la largeur pour éviter les coupures latérales.
-    La hauteur est volontairement plus généreuse :
-    le modèle pourra dépasser par le haut.
-  */
-  const widthMargin = aspect < 0.75 ? 0.76 : 0.82;
-  const heightMargin = 1.08;
+   * La largeur est prioritaire pour éviter
+   * toute coupure sur les côtés.
+   */
+  const widthMargin = aspect < 0.75 ? 0.88 : 0.90;
 
-  const scaleByHeight =
-    (visibleHeight * heightMargin) / modelSize.y;
+  /*
+   * Le vêtement est volontairement plus grand
+   * que la hauteur visible : il dépasse en haut.
+   */
+  const heightMultiplier = aspect < 0.75 ? 1.12 : 1.20;
 
   const scaleByWidth =
     (visibleWidth * widthMargin) /
     Math.max(rotatedWidth, 0.001);
 
-  baseScale = Math.min(scaleByHeight, scaleByWidth);
+  const scaleByHeight =
+    (visibleHeight * heightMultiplier) /
+    Math.max(modelSize.y, 0.001);
 
-  pivot.scale.setScalar(baseScale);
+  baseScale = Math.min(scaleByWidth, scaleByHeight);
+
+  shirtPivot.scale.setScalar(baseScale);
 
   /*
-    Décalage vertical léger vers le haut :
-    le haut peut dépasser, le bas reste dans la fenêtre.
-  */
-  pivot.position.set(
+   * Ancrage du bas : le bas du T-shirt reste visible.
+   * Le haut peut sortir du cadre.
+   */
+  const scaledHeight = modelSize.y * baseScale;
+  const bottomAnchor = -visibleHeight * 0.43;
+
+  shirtPivot.position.set(
     0,
-    visibleHeight * 0.045,
+    bottomAnchor + scaledHeight / 2,
     0
   );
 }
 
 /* =========================================
-   CHARGEMENT DU MODÈLE
+   CHARGEMENT DU T-SHIRT
 ========================================= */
 
 loader.load(
@@ -250,12 +287,12 @@ loader.load(
 
   (gltf) => {
     try {
-      model = gltf.scene;
+      shirtModel = gltf.scene;
 
-      const bounds = new THREE.Box3().setFromObject(model);
-      const center = bounds.getCenter(new THREE.Vector3());
+      const bounds = new THREE.Box3().setFromObject(shirtModel);
 
       modelSize = bounds.getSize(new THREE.Vector3());
+      modelCenter = bounds.getCenter(new THREE.Vector3());
 
       if (
         !Number.isFinite(modelSize.y) ||
@@ -266,32 +303,22 @@ loader.load(
       }
 
       /*
-        Pivot indépendant :
-        le modèle est centré dans ce pivot.
-        Toute la rotation est ensuite appliquée au pivot.
-      */
-      pivot = new THREE.Group();
+       * Pivot séparé :
+       * le modèle tourne autour de son propre centre.
+       */
+      shirtPivot = new THREE.Group();
+      shirtModel.position.copy(modelCenter).negate();
 
-      model.position.sub(center);
-      pivot.add(model);
-      scene.add(pivot);
+      shirtPivot.add(shirtModel);
+      scene.add(shirtPivot);
 
-      /* =====================================
-         MATÉRIAUX / COULEURS / VENT
-      ===================================== */
+      shirtPivot.rotation.set(
+        0,
+        INITIAL_ROTATION_Y,
+        0
+      );
 
-      const isDesktop = window.matchMedia(
-        "(min-width: 768px)"
-      ).matches;
-
-      /*
-        Saturation plus forte sur PC.
-        Contraste légèrement augmenté sur les deux supports.
-      */
-      const saturation = isDesktop ? 2.25 : 1.95;
-      const contrast = 1.07;
-
-      model.traverse((object) => {
+      shirtModel.traverse((object) => {
         if (!object.isMesh) return;
 
         object.frustumCulled = false;
@@ -303,24 +330,65 @@ loader.load(
         materials.forEach((material) => {
 
           const windUniforms = {
-            uTime: { value: 0 }
+            uTime: { value: 0 },
+            uMinY: { value: bounds.min.y },
+            uInvHeight: {
+              value: 1 / Math.max(modelSize.y, 0.001)
+            },
+            uHeight: { value: modelSize.y },
+
+            /* PC : saturation plus forte */
+            uSaturation: {
+              value: window.innerWidth >= 768 ? 2.25 : 1.85
+            },
+
+            /* Contraste légèrement renforcé */
+            uContrast: { value: 1.08 }
           };
 
           material.onBeforeCompile = (shader) => {
 
             shader.uniforms.uTime = windUniforms.uTime;
-            material.userData.windShader = shader;
+            shader.uniforms.uMinY = windUniforms.uMinY;
+            shader.uniforms.uInvHeight = windUniforms.uInvHeight;
+            shader.uniforms.uHeight = windUniforms.uHeight;
+            shader.uniforms.uSaturation = windUniforms.uSaturation;
+            shader.uniforms.uContrast = windUniforms.uContrast;
 
-            /* Vent très léger */
+            material.userData.windShader = shader;
+            animatedShaders.push(shader);
+
+            /* Vertex shader : mouvement discret du tissu */
             shader.vertexShader = shader.vertexShader.replace(
               "#include <common>",
               `#include <common>
-              uniform float uTime;`
+              uniform float uTime;
+              uniform float uMinY;
+              uniform float uInvHeight;
+              uniform float uHeight;`
             );
 
             shader.vertexShader = shader.vertexShader.replace(
               "#include <begin_vertex>",
               `#include <begin_vertex>
+
+              float heightRatio = clamp(
+                (position.y - uMinY) * uInvHeight,
+                0.0,
+                1.0
+              );
+
+              float hem = 1.0 - smoothstep(
+                0.12, 0.48, heightRatio
+              );
+
+              float sides = smoothstep(
+                0.25,
+                0.85,
+                abs(position.x) / max(uHeight * 0.25, 0.001)
+              );
+
+              float windWeight = max(hem, sides * 0.45);
 
               float wave = sin(
                 uTime * 1.1 +
@@ -334,21 +402,27 @@ loader.load(
                 position.x * 2.4
               );
 
-              float hemWeight = 1.0 - smoothstep(
-                0.12, 0.48,
-                clamp(position.y / max(${modelSize.y.toFixed(5)}, 0.001) + 0.5, 0.0, 1.0)
-              );
+              transformed.x +=
+                wave * windWeight * uHeight * 0.0015;
 
-              transformed.x += wave * hemWeight * 0.0015;
-              transformed.z += wave2 * hemWeight * 0.001;
+              transformed.z +=
+                wave2 * windWeight * uHeight * 0.001;
               `
             );
 
-            /* Saturation + contraste */
+            /* Fragment shader : saturation et contraste */
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <common>",
+              `#include <common>
+              uniform float uSaturation;
+              uniform float uContrast;`
+            );
+
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <color_fragment>",
               `#include <color_fragment>
 
+              /* Saturation */
               float luma = dot(
                 diffuseColor.rgb,
                 vec3(0.2126, 0.7152, 0.0722)
@@ -357,40 +431,47 @@ loader.load(
               diffuseColor.rgb = mix(
                 vec3(luma),
                 diffuseColor.rgb,
-                ${saturation.toFixed(2)}
+                uSaturation
               );
 
-              diffuseColor.rgb =
-                (diffuseColor.rgb - 0.5) * ${contrast.toFixed(2)} + 0.5;
+              /* Contraste léger */
+              diffuseColor.rgb = (
+                diffuseColor.rgb - vec3(0.5)
+              ) * uContrast + vec3(0.5);
 
-              /*
-                Renforcement ciblé du rouge :
-                préserve les noirs et les reliefs.
-              */
+              /* Renforcement ciblé du rouge */
               float redDominance = smoothstep(
-                0.015,
-                0.16,
+                0.025,
+                0.20,
                 diffuseColor.r - max(
                   diffuseColor.g,
                   diffuseColor.b
                 )
               );
 
-              diffuseColor.r *= mix(1.0, 1.42, redDominance);
-              diffuseColor.g *= mix(1.0, 0.90, redDominance);
-              diffuseColor.b *= mix(1.0, 0.92, redDominance);
+              diffuseColor.r *= mix(
+                1.0,
+                1.30,
+                redDominance
+              );
 
-              diffuseColor.rgb = clamp(
-                diffuseColor.rgb,
-                0.0,
-                1.0
+              diffuseColor.g *= mix(
+                1.0,
+                0.94,
+                redDominance
+              );
+
+              diffuseColor.b *= mix(
+                1.0,
+                0.94,
+                redDominance
               );
               `
             );
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-rotation-wind-v6";
+            "ekdys-shift-color-wind-v6";
 
           material.needsUpdate = true;
         });
@@ -398,17 +479,13 @@ loader.load(
 
       updateShirtFit();
 
-      /* Orientation initiale immédiatement visible */
-      pivot.rotation.set(0, INITIAL_ROTATION_Y, 0);
-
       loading.style.display = "none";
 
-      console.log("[EKDYS SHIFT] Modèle chargé.");
-      console.log("[EKDYS SHIFT] Rotation initiale :", INITIAL_ROTATION_Y);
+      console.log("EKDYS SHIFT : modèle chargé.");
 
     } catch (error) {
       loading.textContent = "ERREUR : " + error.message;
-      console.error("[EKDYS SHIFT] Erreur modèle :", error);
+      console.error("Erreur modèle :", error);
     }
   },
 
@@ -423,29 +500,27 @@ loader.load(
 
   (error) => {
     loading.textContent = "ERREUR DE CHARGEMENT DU MODÈLE 3D";
-    console.error("[EKDYS SHIFT] Erreur GLB :", error);
+    console.error("Erreur GLB :", error);
   }
 );
 
 /* =========================================
-   RÉCEPTION DU SCROLL DE CARRD
+   RÉCEPTION DU SCROLL CARRD
 ========================================= */
 
 window.addEventListener("message", (event) => {
   if (
     event.source !== window.parent ||
-    event.origin !== "https://ekdys.fr"
+    event.data?.type !== "EKDYS_SCROLL"
   ) {
     return;
   }
 
-  if (event.data?.type === "EKDYS_SCROLL") {
-    const value = Number(event.data.progress);
-
-    if (Number.isFinite(value)) {
-      scrollTarget = THREE.MathUtils.clamp(value, 0, 1);
-    }
-  }
+  scrollTarget = THREE.MathUtils.clamp(
+    Number(event.data.progress) || 0,
+    0,
+    1
+  );
 });
 
 /* =========================================
@@ -463,10 +538,18 @@ function resize() {
 
   renderer.setSize(width, height);
 
+  /* Mise à jour de la saturation selon l'écran */
+  const saturation = width >= 768 ? 2.25 : 1.85;
+
+  animatedShaders.forEach((shader) => {
+    shader.uniforms.uSaturation.value = saturation;
+  });
+
   updateShirtFit();
 }
 
 new ResizeObserver(resize).observe(container);
+window.addEventListener("resize", resize);
 
 /* =========================================
    ANIMATION
@@ -477,49 +560,27 @@ renderer.setAnimationLoop(() => {
 
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
 
-  if (pivot) {
+  animatedShaders.forEach((shader) => {
+    shader.uniforms.uTime.value = time;
+  });
 
-    /* Mise à jour du vent */
-    if (model) {
-      model.traverse((object) => {
-        if (!object.isMesh) return;
-
-        const materials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
-
-        materials.forEach((material) => {
-          const shader = material.userData.windShader;
-
-          if (shader) {
-            shader.uniforms.uTime.value = time;
-          }
-        });
-      });
-    }
+  if (shirtPivot) {
 
     /*
-      Rotation initiale + rotation liée au scroll.
-      Le pivot tourne, pas le maillage individuel.
-    */
-    pivot.rotation.y =
-      INITIAL_ROTATION_Y - scrollCurrent * SCROLL_ROTATION_Y;
-
-    pivot.rotation.x = scrollCurrent * 0.025;
-    pivot.rotation.z = -scrollCurrent * 0.008;
-
-    /*
-      Le scroll privilégie la rotation.
-      Le zoom est volontairement réduit.
-    */
-    const zoom = 1 + scrollCurrent * 0.10;
-    pivot.scale.setScalar(baseScale * zoom);
-
-    pivot.position.z = scrollCurrent * 0.06;
+     * Rotation initiale permanente
+     * + rotation supplémentaire au scroll.
+     *
+     * Aucun zoom.
+     * Aucune modification de la caméra.
+     */
+    shirtPivot.rotation.y =
+      INITIAL_ROTATION_Y -
+      scrollCurrent * SCROLL_ROTATION_Y;
   }
 
   renderer.render(scene, camera);
 });
 </script>
+
 </body>
 </html>
