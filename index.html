@@ -1,10 +1,14 @@
-```html
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EKDYS — SHIFT 3D</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BBH+Sans+Bartle&display=swap" rel="stylesheet">
 
 <style>
 * {
@@ -38,10 +42,49 @@ body {
   pointer-events: none;
 }
 
+/* =========================================
+   TEXTE CINÉMATIQUE SHIFT
+   Derrière le T-shirt 3D
+========================================= */
+
+#shift-title {
+  position: absolute;
+  z-index: 1;
+
+  left: 50%;
+  top: 50%;
+
+  transform: translate(-50%, -50%);
+
+  width: 100%;
+  text-align: center;
+
+  font-family: "BBH Sans Bartle", sans-serif;
+  font-size: clamp(75px, 17vw, 250px);
+  line-height: 0.9;
+  letter-spacing: 0.015em;
+
+  color: #800000;
+
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+
+  opacity: 1;
+
+  text-shadow:
+    0 0 25px rgba(128, 0, 0, 0.18),
+    0 0 65px rgba(128, 0, 0, 0.12);
+
+  transition: none;
+}
+
+/* Canvas du T-shirt au premier plan */
+
 #shift-scene canvas {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   display: block;
   width: 100%;
   height: 100%;
@@ -53,13 +96,21 @@ body {
 #shift-loading {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   display: grid;
   place-items: center;
   color: #aaa;
   font: 12px Arial, sans-serif;
   letter-spacing: 2px;
   pointer-events: none;
+}
+
+/* Ajustement du texte sur mobile */
+
+@media (max-width: 600px) {
+  #shift-title {
+    font-size: clamp(65px, 19vw, 125px);
+  }
 }
 </style>
 
@@ -77,6 +128,9 @@ body {
 
 <div id="shift-scene">
   <div id="shift-background"></div>
+
+  <div id="shift-title">SHIFT</div>
+
   <div id="shift-loading">EKDYS — LOADING</div>
 </div>
 
@@ -91,6 +145,7 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 const container = document.querySelector("#shift-scene");
 const loading = document.querySelector("#shift-loading");
+const title = document.querySelector("#shift-title");
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.005);
@@ -106,8 +161,9 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-/* Distance initiale et distance finale */
-const CAMERA_Z_FAR = 8.0;
+/* Départ plus éloigné et arrivée rapprochée */
+
+const CAMERA_Z_FAR = 10.0;
 const CAMERA_Z_CLOSE = 6.4;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
@@ -211,13 +267,10 @@ let scrollCurrent = 0;
 const INITIAL_ROTATION_Y = 0.34;
 const SCROLL_ROTATION_Y = 0.72;
 
-/* Animation des shaders */
 const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
-   Le cadrage est calculé à la distance
-   finale, lorsque le T-shirt est rapproché.
 ========================================= */
 
 function updateShirtFit() {
@@ -292,6 +345,7 @@ loader.load(
       }
 
       shirtPivot = new THREE.Group();
+
       shirtModel.position.copy(modelCenter).negate();
 
       shirtPivot.add(shirtModel);
@@ -535,7 +589,6 @@ window.addEventListener("resize", resize);
 renderer.setAnimationLoop(() => {
   const time = clock.getElapsedTime();
 
-  /* Lissage du scroll */
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
 
   animatedShaders.forEach((shader) => {
@@ -544,16 +597,12 @@ renderer.setAnimationLoop(() => {
 
   if (shirtPivot) {
 
-    /* Rotation progressive conservée */
+    /* Rotation progressive */
     shirtPivot.rotation.y =
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
 
-    /*
-     * RAPPROCHEMENT :
-     * départ éloigné → arrivée proche.
-     * La caméra avance progressivement avec le scroll.
-     */
+    /* Rapprochement progressif */
     camera.position.z = THREE.MathUtils.lerp(
       CAMERA_Z_FAR,
       CAMERA_Z_CLOSE,
@@ -561,10 +610,31 @@ renderer.setAnimationLoop(() => {
     );
   }
 
+  /* =====================================
+     DISPARITION DU TEXTE SHIFT
+     Début : 50 %
+     Fin : 78 %
+  ===================================== */
+
+  const fadeStart = 0.50;
+  const fadeEnd = 0.78;
+
+  const fadeProgress = THREE.MathUtils.clamp(
+    (scrollCurrent - fadeStart) /
+    (fadeEnd - fadeStart),
+    0,
+    1
+  );
+
+  const smoothFade =
+    fadeProgress * fadeProgress *
+    (3 - 2 * fadeProgress);
+
+  title.style.opacity = String(1 - smoothFade);
+
   renderer.render(scene, camera);
 });
 </script>
 
 </body>
 </html>
-```
