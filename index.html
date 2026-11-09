@@ -41,12 +41,17 @@ body {
   pointer-events: none;
 }
 
+/* =========================================
+   TEXTE ARRIÈRE — DERRIÈRE LE T-SHIRT
+========================================= */
+
 #shift-title {
   position: absolute;
   z-index: 5;
   left: 50%;
   top: 50%;
   width: 100%;
+  margin: 0;
   text-align: center;
   transform: translate(-50%, -50%) scaleX(1.15);
   transform-origin: center center;
@@ -55,15 +60,19 @@ body {
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #d0002b;
+  color: #800020;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 18px rgba(208, 0, 43, 0.22),
-    0 0 45px rgba(208, 0, 43, 0.15);
+    0 0 18px rgba(128, 0, 32, 0.22),
+    0 0 45px rgba(128, 0, 32, 0.15);
 }
+
+/* =========================================
+   T-SHIRT 3D
+========================================= */
 
 #shift-scene canvas {
   position: absolute;
@@ -77,10 +86,38 @@ body {
   user-select: none;
 }
 
+/* =========================================
+   TEXTE AVANT — TRANSLUCIDE
+========================================= */
+
+#shift-title-front {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  transform: translate(-50%, -50%) scaleX(1.15);
+  transform-origin: center center;
+  font-family: "BBH Sans Bartle", sans-serif;
+  font-size: clamp(90px, 25vw, 380px);
+  font-weight: normal;
+  line-height: 0.85;
+  letter-spacing: -0.025em;
+  color: #800020;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.12;
+  text-shadow:
+    0 0 12px rgba(128, 0, 32, 0.10);
+}
+
 #shift-loading {
   position: absolute;
   inset: 0;
-  z-index: 7;
+  z-index: 8;
   display: grid;
   place-items: center;
   color: #ddd;
@@ -90,7 +127,8 @@ body {
 }
 
 @media (max-width: 600px) {
-  #shift-title {
+  #shift-title,
+  #shift-title-front {
     font-size: clamp(75px, 25vw, 180px);
     transform: translate(-50%, -50%) scaleX(1.08);
   }
@@ -111,7 +149,10 @@ body {
 
 <div id="shift-scene">
   <div id="shift-background"></div>
+
+  <!-- Texte derrière le modèle -->
   <div id="shift-title">SHIFT</div>
+
   <div id="shift-loading">EKDYS — LOADING</div>
 </div>
 
@@ -141,11 +182,6 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   100
 );
-
-/*
-  Le T-shirt est cadré à CAMERA_Z_FAR.
-  Le rapprochement au scroll reste volontairement modéré.
-*/
 
 const CAMERA_Z_FAR = 15.0;
 const CAMERA_Z_CLOSE = 12.5;
@@ -178,6 +214,17 @@ renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
 container.appendChild(renderer.domElement);
+
+/* =========================================
+   TEXTE AVANT LE CANVAS
+   Il est créé après le canvas pour rester
+   visuellement au-dessus du T-shirt.
+========================================= */
+
+const frontTitle = document.createElement("div");
+frontTitle.id = "shift-title-front";
+frontTitle.textContent = "SHIFT";
+container.appendChild(frontTitle);
 
 /* =========================================
    ÉCLAIRAGE
@@ -245,7 +292,6 @@ const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
-   Calculé à la distance la plus éloignée
 ========================================= */
 
 function updateShirtFit() {
@@ -259,11 +305,6 @@ function updateShirtFit() {
 
   const aspect = width / height;
 
-  /*
-    Dimensions visibles à la distance initiale.
-    Le T-shirt doit tenir dans cette zone dès le départ.
-  */
-
   const visibleHeight =
     2 *
     Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
@@ -271,20 +312,10 @@ function updateShirtFit() {
 
   const visibleWidth = visibleHeight * aspect;
 
-  /*
-    Largeur conservatrice : tient compte de la profondeur
-    du modèle et de sa rotation.
-  */
-
   const rotatedWidth = Math.sqrt(
     modelSize.x * modelSize.x +
     modelSize.z * modelSize.z
   );
-
-  /*
-    Marges de sécurité pour les formats étroits,
-    les écrans larges et les fenêtres peu hautes.
-  */
 
   const widthMargin = aspect < 0.75 ? 0.76 : 0.80;
   const heightMargin = aspect < 0.75 ? 0.76 : 0.80;
@@ -303,11 +334,6 @@ function updateShirtFit() {
   );
 
   shirtPivot.scale.setScalar(baseScale);
-
-  /*
-    Position presque centrée verticalement.
-    Cela évite de couper le haut ou le bas du vêtement.
-  */
 
   const scaledHeight = modelSize.y * baseScale;
 
@@ -636,7 +662,7 @@ renderer.setAnimationLoop(() => {
     );
   }
 
-  /* DISPARITION DU TEXTE SHIFT AU SCROLL */
+  /* DISPARITION SYNCHRONISÉE DES DEUX TEXTES */
 
   const fadeStart = 0.50;
   const fadeEnd = 0.78;
@@ -652,7 +678,10 @@ renderer.setAnimationLoop(() => {
     fadeProgress * fadeProgress *
     (3 - 2 * fadeProgress);
 
-  title.style.opacity = String(1 - smoothFade);
+  const textOpacity = 1 - smoothFade;
+
+  title.style.opacity = String(textOpacity);
+  frontTitle.style.opacity = String(0.12 * textOpacity);
 
   renderer.render(scene, camera);
 });
