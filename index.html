@@ -44,7 +44,7 @@ body {
 
 /* =========================================
    TEXTE CINÉMATIQUE SHIFT
-   Derrière le T-shirt 3D
+   Environ 80 % de la largeur de la fenêtre
 ========================================= */
 
 #shift-title {
@@ -53,18 +53,17 @@ body {
 
   left: 50%;
   top: 50%;
-
   transform: translate(-50%, -50%);
 
-  width: 100%;
+  width: 80%;
   text-align: center;
 
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(75px, 17vw, 250px);
+  font-size: clamp(48px, 22vw, 320px);
   line-height: 0.9;
-  letter-spacing: 0.015em;
+  letter-spacing: 0;
 
-  color: #800000;
+  color: #c00024;
 
   white-space: nowrap;
   pointer-events: none;
@@ -73,8 +72,8 @@ body {
   opacity: 1;
 
   text-shadow:
-    0 0 25px rgba(128, 0, 0, 0.18),
-    0 0 65px rgba(128, 0, 0, 0.12);
+    0 0 20px rgba(192, 0, 36, 0.28),
+    0 0 55px rgba(192, 0, 36, 0.20);
 
   transition: none;
 }
@@ -99,17 +98,15 @@ body {
   z-index: 3;
   display: grid;
   place-items: center;
-  color: #aaa;
+  color: #ddd;
   font: 12px Arial, sans-serif;
   letter-spacing: 2px;
   pointer-events: none;
 }
 
-/* Ajustement du texte sur mobile */
-
 @media (max-width: 600px) {
   #shift-title {
-    font-size: clamp(65px, 19vw, 125px);
+    font-size: clamp(48px, 22vw, 125px);
   }
 }
 </style>
@@ -128,9 +125,7 @@ body {
 
 <div id="shift-scene">
   <div id="shift-background"></div>
-
   <div id="shift-title">SHIFT</div>
-
   <div id="shift-loading">EKDYS — LOADING</div>
 </div>
 
@@ -148,7 +143,7 @@ const loading = document.querySelector("#shift-loading");
 const title = document.querySelector("#shift-title");
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x080808, 0.005);
+scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
    CAMÉRA
@@ -161,9 +156,9 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-/* Départ plus éloigné et arrivée rapprochée */
+/* Départ plus éloigné */
 
-const CAMERA_Z_FAR = 10.0;
+const CAMERA_Z_FAR = 13.0;
 const CAMERA_Z_CLOSE = 6.4;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
@@ -189,51 +184,60 @@ renderer.setSize(
 
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.25;
 renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
 container.appendChild(renderer.domElement);
 
 /* =========================================
-   ÉCLAIRAGE
+   ÉCLAIRAGE RENFORCÉ
 ========================================= */
 
 scene.add(
   new THREE.HemisphereLight(
     0xffffff,
-    0x252027,
-    1.35
+    0x38313a,
+    1.8
   )
 );
 
 const keyLight = new THREE.DirectionalLight(
   0xffffff,
-  2.7
+  3.2
 );
 keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
 const sideLight = new THREE.DirectionalLight(
   0xe8eaf2,
-  1.45
+  1.8
 );
 sideLight.position.set(-4, 1.5, 2);
 scene.add(sideLight);
 
 const rimLight = new THREE.DirectionalLight(
-  0xb52a42,
-  1.1
+  0xd43b58,
+  1.4
 );
 rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
 const fillLight = new THREE.DirectionalLight(
   0xffffff,
-  0.8
+  1.2
 );
 fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
+
+/* Lumière frontale douce */
+
+const frontLight = new THREE.DirectionalLight(
+  0xffffff,
+  0.8
+);
+frontLight.position.set(0, 2, 6);
+scene.add(frontLight);
 
 /* =========================================
    CHARGEMENT DRACO
@@ -259,7 +263,6 @@ let shirtModel = null;
 
 let baseScale = 1;
 let modelSize = new THREE.Vector3();
-let modelCenter = new THREE.Vector3();
 
 let scrollTarget = 0;
 let scrollCurrent = 0;
@@ -334,7 +337,7 @@ loader.load(
       const bounds = new THREE.Box3().setFromObject(shirtModel);
 
       modelSize = bounds.getSize(new THREE.Vector3());
-      modelCenter = bounds.getCenter(new THREE.Vector3());
+      const modelCenter = bounds.getCenter(new THREE.Vector3());
 
       if (
         !Number.isFinite(modelSize.y) ||
@@ -362,6 +365,25 @@ loader.load(
 
         object.frustumCulled = false;
 
+        const geometry = object.geometry;
+        geometry.computeBoundingBox();
+
+        const meshBounds = geometry.boundingBox;
+
+        const meshMinY = meshBounds.min.y;
+        const meshHeight = Math.max(
+          meshBounds.max.y - meshBounds.min.y,
+          0.001
+        );
+
+        const meshCenterX =
+          (meshBounds.min.x + meshBounds.max.x) / 2;
+
+        const meshWidth = Math.max(
+          meshBounds.max.x - meshBounds.min.x,
+          0.001
+        );
+
         const materials = Array.isArray(object.material)
           ? object.material
           : [object.material];
@@ -370,17 +392,17 @@ loader.load(
 
           const windUniforms = {
             uTime: { value: 0 },
-            uMinY: { value: bounds.min.y },
-            uInvHeight: {
-              value: 1 / Math.max(modelSize.y, 0.001)
-            },
-            uHeight: { value: modelSize.y },
+            uMinY: { value: meshMinY },
+            uInvHeight: { value: 1 / meshHeight },
+            uHeight: { value: meshHeight },
+            uCenterX: { value: meshCenterX },
+            uInvWidth: { value: 1 / meshWidth },
 
             uSaturation: {
               value: window.innerWidth >= 768 ? 2.25 : 1.85
             },
 
-            uContrast: { value: 1.08 }
+            uContrast: { value: 1.18 }
           };
 
           material.onBeforeCompile = (shader) => {
@@ -389,11 +411,15 @@ loader.load(
             shader.uniforms.uMinY = windUniforms.uMinY;
             shader.uniforms.uInvHeight = windUniforms.uInvHeight;
             shader.uniforms.uHeight = windUniforms.uHeight;
+            shader.uniforms.uCenterX = windUniforms.uCenterX;
+            shader.uniforms.uInvWidth = windUniforms.uInvWidth;
             shader.uniforms.uSaturation = windUniforms.uSaturation;
             shader.uniforms.uContrast = windUniforms.uContrast;
 
             material.userData.windShader = shader;
             animatedShaders.push(shader);
+
+            /* Variables du vent */
 
             shader.vertexShader = shader.vertexShader.replace(
               "#include <common>",
@@ -401,8 +427,12 @@ loader.load(
               uniform float uTime;
               uniform float uMinY;
               uniform float uInvHeight;
-              uniform float uHeight;`
+              uniform float uHeight;
+              uniform float uCenterX;
+              uniform float uInvWidth;`
             );
+
+            /* Déformation du tissu */
 
             shader.vertexShader = shader.vertexShader.replace(
               "#include <begin_vertex>",
@@ -414,37 +444,52 @@ loader.load(
                 1.0
               );
 
+              /* Le bas du T-shirt réagit davantage au vent */
+
               float hem = 1.0 - smoothstep(
-                0.12, 0.48, heightRatio
+                0.10, 0.55, heightRatio
+              );
+
+              /* Les côtés du tissu réagissent également */
+
+              float sideRatio = abs(
+                (position.x - uCenterX) * uInvWidth
               );
 
               float sides = smoothstep(
-                0.25,
-                0.85,
-                abs(position.x) / max(uHeight * 0.25, 0.001)
+                0.25, 0.85, sideRatio
               );
 
-              float windWeight = max(hem, sides * 0.45);
+              float windWeight = max(
+                hem,
+                sides * 0.65
+              );
+
+              /* Deux mouvements ondulatoires */
 
               float wave = sin(
-                uTime * 1.1 +
+                uTime * 1.15 +
                 position.y * 3.0 +
                 position.x * 2.0
               );
 
               float wave2 = sin(
-                uTime * 0.7 +
-                position.y * 1.7 -
+                uTime * 0.75 +
+                position.y * 1.8 -
                 position.x * 2.4
               );
 
+              /* Déformation douce mais visible */
+
               transformed.x +=
-                wave * windWeight * uHeight * 0.0015;
+                wave * windWeight * uHeight * 0.006;
 
               transformed.z +=
-                wave2 * windWeight * uHeight * 0.001;
+                wave2 * windWeight * uHeight * 0.004;
               `
             );
+
+            /* Variables de couleur */
 
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <common>",
@@ -452,6 +497,8 @@ loader.load(
               uniform float uSaturation;
               uniform float uContrast;`
             );
+
+            /* Saturation et contraste */
 
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <color_fragment>",
@@ -471,6 +518,8 @@ loader.load(
               diffuseColor.rgb = (
                 diffuseColor.rgb - vec3(0.5)
               ) * uContrast + vec3(0.5);
+
+              /* Renforcement ciblé du rouge */
 
               float redDominance = smoothstep(
                 0.025,
@@ -503,7 +552,7 @@ loader.load(
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v6";
+            "ekdys-shift-color-wind-v7";
 
           material.needsUpdate = true;
         });
@@ -591,18 +640,22 @@ renderer.setAnimationLoop(() => {
 
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
 
+  /* Animation continue du vent */
+
   animatedShaders.forEach((shader) => {
     shader.uniforms.uTime.value = time;
   });
 
   if (shirtPivot) {
 
-    /* Rotation progressive */
+    /* Rotation progressive au scroll */
+
     shirtPivot.rotation.y =
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
 
     /* Rapprochement progressif */
+
     camera.position.z = THREE.MathUtils.lerp(
       CAMERA_Z_FAR,
       CAMERA_Z_CLOSE,
