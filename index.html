@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -167,7 +168,7 @@ document.fonts.ready.then(fitTitleText);
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
-   CAMÉRA — ZOOM TRÈS AMPLIFIÉ
+   CAMÉRA — ZOOM TRÈS PUISSANT
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
@@ -180,8 +181,8 @@ const camera = new THREE.PerspectiveCamera(
 /* Position initiale */
 const CAMERA_Z_FAR = 15.0;
 
-/* Position finale beaucoup plus proche */
-const CAMERA_Z_CLOSE = 4.8;
+/* Position finale : très proche du T-shirt */
+const CAMERA_Z_CLOSE = 1.2;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -627,14 +628,11 @@ renderer.setAnimationLoop(() => {
 
     if (shirtPivot) {
 
-        /* ACCÉLÉRATION DU ZOOM
-           Le zoom progresse beaucoup plus vite
-           dès le début du défilement.
-        */
+        /* COURBE DE ZOOM TRÈS ACCÉLÉRÉE */
 
         const zoomProgress = 1 - Math.pow(
             1 - scrollCurrent,
-            2.2
+            1.5
         );
 
         /* ROTATION */
@@ -643,7 +641,7 @@ renderer.setAnimationLoop(() => {
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM CAMÉRA ACCÉLÉRÉ */
+        /* ZOOM CAMÉRA */
 
         camera.position.z = THREE.MathUtils.lerp(
             CAMERA_Z_FAR,
@@ -655,7 +653,7 @@ renderer.setAnimationLoop(() => {
 
         const zoomScale = THREE.MathUtils.lerp(
             1.0,
-            1.12,
+            1.25,
             zoomProgress
         );
 
