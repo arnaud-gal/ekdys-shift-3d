@@ -53,10 +53,10 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.15);
+  transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(90px, 25vw, 380px);
+  font-size: clamp(45px, 12.5vw, 190px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
@@ -98,10 +98,10 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.15);
+  transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(90px, 25vw, 380px);
+  font-size: clamp(45px, 12.5vw, 190px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
@@ -109,9 +109,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 0.12;
+  opacity: 0.20;
   text-shadow:
-    0 0 12px rgba(128, 0, 32, 0.10);
+    0 0 12px rgba(128, 0, 32, 0.14);
 }
 
 #shift-loading {
@@ -126,11 +126,15 @@ body {
   pointer-events: none;
 }
 
+/* =========================================
+   MOBILE
+========================================= */
+
 @media (max-width: 600px) {
   #shift-title,
   #shift-title-front {
-    font-size: clamp(75px, 25vw, 180px);
-    transform: translate(-50%, -50%) scaleX(1.08);
+    font-size: clamp(37.5px, 12.5vw, 90px);
+    transform: translate(-50%, -50%) scaleX(1.03);
   }
 }
 </style>
@@ -148,12 +152,17 @@ body {
 <body>
 
 <div id="shift-scene">
+
   <div id="shift-background"></div>
 
-  <!-- Texte derrière le modèle -->
+  <!-- Couche arrière -->
   <div id="shift-title">SHIFT</div>
 
   <div id="shift-loading">EKDYS — LOADING</div>
+
+  <!-- Couche avant translucide -->
+  <div id="shift-title-front">SHIFT</div>
+
 </div>
 
 <script type="module">
@@ -168,6 +177,7 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 const container = document.querySelector("#shift-scene");
 const loading = document.querySelector("#shift-loading");
 const title = document.querySelector("#shift-title");
+const frontTitle = document.querySelector("#shift-title-front");
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
@@ -214,17 +224,6 @@ renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
 container.appendChild(renderer.domElement);
-
-/* =========================================
-   TEXTE AVANT LE CANVAS
-   Il est créé après le canvas pour rester
-   visuellement au-dessus du T-shirt.
-========================================= */
-
-const frontTitle = document.createElement("div");
-frontTitle.id = "shift-title-front";
-frontTitle.textContent = "SHIFT";
-container.appendChild(frontTitle);
 
 /* =========================================
    ÉCLAIRAGE
@@ -681,7 +680,7 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.12 * textOpacity);
+  frontTitle.style.opacity = String(0.20 * textOpacity);
 
   renderer.render(scene, camera);
 });
