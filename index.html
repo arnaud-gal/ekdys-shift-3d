@@ -49,6 +49,7 @@ html, body {
     margin: 0;
     text-align: center;
     transform: translate(-50%, -50%);
+    transform-origin: center center;
     font-family: "BBH Sans Bartle", sans-serif;
     font-size: 100px;
     font-weight: normal;
@@ -85,6 +86,7 @@ html, body {
     margin: 0;
     text-align: center;
     transform: translate(-50%, -50%);
+    transform-origin: center center;
     font-family: "BBH Sans Bartle", sans-serif;
     font-size: 100px;
     font-weight: normal;
@@ -149,7 +151,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
-   TEXTE RESPONSIVE
+   AJUSTEMENT AUTOMATIQUE DU TEXTE
 ========================================= */
 
 function fitTitleText() {
@@ -178,6 +180,7 @@ function fitTitleText() {
 }
 
 document.fonts.ready.then(fitTitleText);
+window.addEventListener("resize", fitTitleText);
 
 /* =========================================
    CAMÉRA
@@ -190,20 +193,11 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/*
-   OBJECTIF : AGRANDISSEMENT D'ENVIRON 58 %
-
-   Départ : 15
-   Arrivée : 9.5
-
-   15 / 9.5 = 1.579
-
-   Soit environ 57.9 % d'agrandissement
-   par perspective, à orientation identique.
-*/
-
+/* DISTANCE INITIALE */
 const CAMERA_Z_FAR = 15.0;
-const CAMERA_Z_CLOSE = 9.5;
+
+/* DISTANCE FINALE : +78,6 % DE GROSSISSEMENT */
+const CAMERA_Z_CLOSE = 8.4;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -267,7 +261,7 @@ frontLight.position.set(0, 2, 6);
 scene.add(frontLight);
 
 /* =========================================
-   DRACO
+   CHARGEMENT DRACO
 ========================================= */
 
 const dracoLoader = new DRACOLoader();
@@ -363,9 +357,7 @@ loader.load(
     "./shift.glb",
 
     (gltf) => {
-
         try {
-
             shirtModel = gltf.scene;
 
             const bounds = new THREE.Box3().setFromObject(shirtModel);
@@ -400,11 +392,10 @@ loader.load(
             );
 
             /* =================================
-               ANIMATION DU TISSU ET COULEURS
+               ANIMATION DU TISSU ET DES COULEURS
             ================================= */
 
             shirtModel.traverse((object) => {
-
                 if (!object.isMesh) return;
 
                 object.frustumCulled = false;
@@ -435,25 +426,12 @@ loader.load(
                 materials.forEach((material) => {
 
                     const windUniforms = {
-
                         uTime: { value: 0 },
                         uMinY: { value: meshMinY },
-
-                        uInvHeight: {
-                            value: 1 / meshHeight
-                        },
-
-                        uHeight: {
-                            value: meshHeight
-                        },
-
-                        uCenterX: {
-                            value: meshCenterX
-                        },
-
-                        uInvWidth: {
-                            value: 1 / meshWidth
-                        },
+                        uInvHeight: { value: 1 / meshHeight },
+                        uHeight: { value: meshHeight },
+                        uCenterX: { value: meshCenterX },
+                        uInvWidth: { value: 1 / meshWidth },
 
                         uSaturation: {
                             value: window.innerWidth >= 768
@@ -577,9 +555,7 @@ loader.load(
                         "ekdys-shift-color-wind-v11";
 
                     material.needsUpdate = true;
-
                 });
-
             });
 
             updateShirtFit();
@@ -590,36 +566,27 @@ loader.load(
             console.log("EKDYS SHIFT : modèle chargé.");
 
         } catch (error) {
-
             loading.textContent = "ERREUR : " + error.message;
             console.error("Erreur modèle :", error);
-
         }
-
     },
 
     (progress) => {
-
         if (progress.total > 0) {
-
             loading.textContent =
                 "EKDYS — LOADING " +
                 Math.round(
                     progress.loaded / progress.total * 100
                 ) +
                 "%";
-
         }
-
     },
 
     (error) => {
-
         loading.textContent =
             "ERREUR DE CHARGEMENT DU MODÈLE 3D";
 
         console.error("Erreur GLB :", error);
-
     }
 );
 
@@ -641,15 +608,13 @@ window.addEventListener("message", (event) => {
         0,
         1
     );
-
 });
 
 /* =========================================
-   REDIMENSIONNEMENT
+   REDIMENSIONNEMENT AUTOMATIQUE
 ========================================= */
 
 function resize() {
-
     const width = container.clientWidth;
     const height = container.clientHeight;
 
@@ -684,12 +649,8 @@ renderer.setAnimationLoop(() => {
 
     const time = clock.getElapsedTime();
 
-    /* LISSAGE DU SCROLL */
-
     scrollCurrent +=
         (scrollTarget - scrollCurrent) * 0.09;
-
-    /* ANIMATION DU TISSU */
 
     animatedShaders.forEach((shader) => {
         shader.uniforms.uTime.value = time;
@@ -697,13 +658,13 @@ renderer.setAnimationLoop(() => {
 
     if (shirtPivot) {
 
-        /* ROTATION */
+        /* ROTATION SYNCHRONISÉE */
 
         shirtPivot.rotation.y =
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM : AGRANDISSEMENT D'ENVIRON 58 % */
+        /* ZOOM : +78,6 % À LA FIN */
 
         camera.position.z = THREE.MathUtils.lerp(
             CAMERA_Z_FAR,
@@ -714,10 +675,9 @@ renderer.setAnimationLoop(() => {
         /* PAS DE SCALE SUPPLÉMENTAIRE */
 
         shirtPivot.scale.setScalar(shirtBaseScale);
-
     }
 
-    /* DISPARITION DU TEXTE */
+    /* DISPARITION DES DEUX TEXTES */
 
     const fadeStart = 0.50;
     const fadeEnd = 0.78;
@@ -741,7 +701,6 @@ renderer.setAnimationLoop(() => {
         String(0.40 * textOpacity);
 
     renderer.render(scene, camera);
-
 });
 
 </script>
