@@ -11,99 +11,121 @@
 <link href="https://fonts.googleapis.com/css2?family=BBH+Sans+Bartle&display=swap" rel="stylesheet">
 
 <style>
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: transparent;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
 }
 
 #shift-scene {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: transparent;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
 }
 
 #shift-background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: url("./fond-ekdys.png") center / cover no-repeat;
-  pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: url("./fond-ekdys.png") center / cover no-repeat;
+    pointer-events: none;
 }
 
-#shift-title,
-#shift-title-front {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  margin: 0;
-  text-align: center;
-  transform: translate(-50%, -50%);
-  transform-origin: center center;
-  font-family: "BBH Sans Bartle", sans-serif;
-  font-size: 100px;
-  font-weight: normal;
-  line-height: 0.85;
-  letter-spacing: -0.025em;
-  color: #9A3B32;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-}
+/* TEXTE ARRIÈRE */
 
 #shift-title {
-  z-index: 5;
-  opacity: 1;
-  text-shadow:
-    0 0 12px rgba(154, 59, 50, 0.24),
-    0 0 25px rgba(154, 59, 50, 0.16);
+    position: absolute;
+    z-index: 5;
+    left: 50%;
+    top: 50%;
+    width: 100%;
+    margin: 0;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    font-family: "BBH Sans Bartle", sans-serif;
+    font-size: 100px;
+    font-weight: normal;
+    line-height: 0.85;
+    letter-spacing: -0.025em;
+    color: #9A3B32;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+    opacity: 1;
+    text-shadow:
+        0 0 12px rgba(154, 59, 50, 0.24),
+        0 0 25px rgba(154, 59, 50, 0.16);
 }
+
+/* T-SHIRT 3D */
 
 #shift-scene canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none !important;
-  touch-action: none;
-  user-select: none;
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none !important;
+    touch-action: none;
+    user-select: none;
 }
 
+/* TEXTE AVANT */
+
 #shift-title-front {
-  z-index: 7;
-  opacity: 0.40;
-  text-shadow: 0 0 10px rgba(154, 59, 50, 0.15);
+    position: absolute;
+    z-index: 7;
+    left: 50%;
+    top: 50%;
+    width: 100%;
+    margin: 0;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    font-family: "BBH Sans Bartle", sans-serif;
+    font-size: 100px;
+    font-weight: normal;
+    line-height: 0.85;
+    letter-spacing: -0.025em;
+    color: #9A3B32;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.40;
+    text-shadow:
+        0 0 10px rgba(154, 59, 50, 0.15);
 }
 
 #shift-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  display: grid;
-  place-items: center;
-  color: #ddd;
-  font: 12px Arial, sans-serif;
-  letter-spacing: 2px;
-  pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: grid;
+    place-items: center;
+    color: #ddd;
+    font: 12px Arial, sans-serif;
+    letter-spacing: 2px;
+    pointer-events: none;
 }
 </style>
 
 <script type="importmap">
 {
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-  }
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
 }
 </script>
 </head>
@@ -111,13 +133,19 @@ html, body {
 <body>
 
 <div id="shift-scene">
-  <div id="shift-background"></div>
-  <div id="shift-title">SHIFT</div>
-  <div id="shift-loading">EKDYS — LOADING</div>
-  <div id="shift-title-front">SHIFT</div>
+
+    <div id="shift-background"></div>
+
+    <div id="shift-title">SHIFT</div>
+
+    <div id="shift-loading">EKDYS — LOADING</div>
+
+    <div id="shift-title-front">SHIFT</div>
+
 </div>
 
 <script type="module">
+
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
@@ -139,44 +167,52 @@ scene.fog = new THREE.FogExp2(0x080808, 0.002);
 ========================================= */
 
 function fitTitleText() {
-  const availableWidth = container.clientWidth;
-  if (!availableWidth) return;
 
-  const targetWidth = availableWidth * 0.94;
-  const testFontSize = 100;
+    const availableWidth = container.clientWidth;
 
-  const measureCanvas = document.createElement("canvas");
-  const context = measureCanvas.getContext("2d");
-  if (!context) return;
+    if (!availableWidth) return;
 
-  context.font = `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
+    const targetWidth = availableWidth * 0.94;
+    const testFontSize = 100;
 
-  const measuredWidth = context.measureText("SHIFT").width;
-  if (!measuredWidth) return;
+    const measureCanvas = document.createElement("canvas");
+    const context = measureCanvas.getContext("2d");
 
-  const fontSize = targetWidth / (measuredWidth / testFontSize);
+    if (!context) return;
 
-  title.style.fontSize = `${fontSize}px`;
-  frontTitle.style.fontSize = `${fontSize}px`;
+    context.font =
+        `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
+
+    const measuredWidth = context.measureText("SHIFT").width;
+
+    if (!measuredWidth) return;
+
+    const fontSize =
+        targetWidth / (measuredWidth / testFontSize);
+
+    title.style.fontSize = `${fontSize}px`;
+    frontTitle.style.fontSize = `${fontSize}px`;
 }
 
 document.fonts.ready.then(fitTitleText);
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
-   CAMÉRA RESPONSIVE
+   CAMÉRA
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
-  32,
-  container.clientWidth / container.clientHeight,
-  0.01,
-  100
+    32,
+    container.clientWidth / container.clientHeight,
+    0.01,
+    100
 );
 
-/* ZOOM RENFORCÉ */
+/* Distance initiale */
 const CAMERA_Z_FAR = 15.0;
-const CAMERA_Z_CLOSE = 8.0;
+
+/* Distance finale : rapprochement beaucoup plus visible */
+const CAMERA_Z_CLOSE = 10.0;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -185,23 +221,24 @@ camera.position.set(0, 0, CAMERA_Z_FAR);
 ========================================= */
 
 const renderer = new THREE.WebGLRenderer({
-  alpha: true,
-  antialias: true,
-  powerPreference: "high-performance"
+    alpha: true,
+    antialias: true,
+    powerPreference: "high-performance"
 });
 
 renderer.setPixelRatio(
-  Math.min(window.devicePixelRatio || 1, 1.5)
+    Math.min(window.devicePixelRatio || 1, 1.5)
 );
 
 renderer.setSize(
-  container.clientWidth,
-  container.clientHeight
+    container.clientWidth,
+    container.clientHeight
 );
 
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
+
 renderer.setClearColor(0x000000, 0);
 renderer.domElement.style.pointerEvents = "none";
 
@@ -212,30 +249,40 @@ container.appendChild(renderer.domElement);
 ========================================= */
 
 scene.add(
-  new THREE.HemisphereLight(
-    0xffffff,
-    0x38313a,
-    1.8
-  )
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x38313a,
+        1.8
+    )
 );
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
+const keyLight = new THREE.DirectionalLight(
+    0xffffff, 3.2
+);
 keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
-const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.8);
+const sideLight = new THREE.DirectionalLight(
+    0xe8eaf2, 1.8
+);
 sideLight.position.set(-4, 1.5, 2);
 scene.add(sideLight);
 
-const rimLight = new THREE.DirectionalLight(0xd43b58, 1.4);
+const rimLight = new THREE.DirectionalLight(
+    0xd43b58, 1.4
+);
 rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
+const fillLight = new THREE.DirectionalLight(
+    0xffffff, 1.2
+);
 fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
 
-const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const frontLight = new THREE.DirectionalLight(
+    0xffffff, 0.8
+);
 frontLight.position.set(0, 2, 6);
 scene.add(frontLight);
 
@@ -246,7 +293,7 @@ scene.add(frontLight);
 const dracoLoader = new DRACOLoader();
 
 dracoLoader.setDecoderPath(
-  "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
+    "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
 );
 
 const loader = new GLTFLoader();
@@ -260,7 +307,9 @@ const clock = new THREE.Clock();
 
 let shirtPivot = null;
 let shirtModel = null;
+
 let modelSize = new THREE.Vector3();
+let shirtBaseScale = 1;
 
 let scrollTarget = 0;
 let scrollCurrent = 0;
@@ -275,58 +324,61 @@ const animatedShaders = [];
 ========================================= */
 
 function updateShirtFit() {
-  if (!shirtPivot || !shirtModel) return;
-  if (modelSize.y <= 0 || modelSize.x <= 0) return;
 
-  const width = container.clientWidth;
-  const height = container.clientHeight;
+    if (!shirtPivot || !shirtModel) return;
+    if (modelSize.y <= 0 || modelSize.x <= 0) return;
 
-  if (!width || !height) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-  const aspect = width / height;
+    if (!width || !height) return;
 
-  const visibleHeight =
-    2 *
-    Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
-    CAMERA_Z_FAR;
+    const aspect = width / height;
 
-  const visibleWidth = visibleHeight * aspect;
+    const visibleHeight =
+        2 *
+        Math.tan(
+            THREE.MathUtils.degToRad(camera.fov / 2)
+        ) *
+        CAMERA_Z_FAR;
 
-  const rotatedWidth = Math.sqrt(
-    modelSize.x * modelSize.x +
-    modelSize.z * modelSize.z
-  );
+    const visibleWidth = visibleHeight * aspect;
 
-  /*
-     Marge réduite pour permettre un zoom important
-     tout en conservant le T-shirt dans le cadre.
-  */
+    const rotatedWidth = Math.sqrt(
+        modelSize.x * modelSize.x +
+        modelSize.z * modelSize.z
+    );
 
-  const widthMargin = 0.50;
-  const heightMargin = 0.50;
+    /*
+       Marge initiale pour permettre au T-shirt
+       de grossir progressivement pendant le scroll.
+    */
 
-  const scaleByWidth =
-    (visibleWidth * widthMargin) /
-    Math.max(rotatedWidth, 0.001);
+    const widthMargin = 0.60;
+    const heightMargin = 0.60;
 
-  const scaleByHeight =
-    (visibleHeight * heightMargin) /
-    Math.max(modelSize.y, 0.001);
+    const scaleByWidth =
+        (visibleWidth * widthMargin) /
+        Math.max(rotatedWidth, 0.001);
 
-  const baseScale = Math.min(
-    scaleByWidth,
-    scaleByHeight
-  );
+    const scaleByHeight =
+        (visibleHeight * heightMargin) /
+        Math.max(modelSize.y, 0.001);
 
-  shirtPivot.scale.setScalar(baseScale);
+    shirtBaseScale = Math.min(
+        scaleByWidth,
+        scaleByHeight
+    );
 
-  const scaledHeight = modelSize.y * baseScale;
+    shirtPivot.scale.setScalar(shirtBaseScale);
 
-  shirtPivot.position.set(
-    0,
-    -scaledHeight * 0.02,
-    0
-  );
+    const scaledHeight = modelSize.y * shirtBaseScale;
+
+    shirtPivot.position.set(
+        0,
+        -scaledHeight * 0.02,
+        0
+    );
 }
 
 /* =========================================
@@ -334,250 +386,303 @@ function updateShirtFit() {
 ========================================= */
 
 loader.load(
-  "./shift.glb",
+    "./shift.glb",
 
-  (gltf) => {
-    try {
-      shirtModel = gltf.scene;
+    (gltf) => {
 
-      const bounds = new THREE.Box3().setFromObject(shirtModel);
+        try {
 
-      modelSize = bounds.getSize(new THREE.Vector3());
-      const modelCenter = bounds.getCenter(new THREE.Vector3());
+            shirtModel = gltf.scene;
 
-      if (
-        !Number.isFinite(modelSize.y) ||
-        modelSize.y <= 0 ||
-        modelSize.x <= 0
-      ) {
-        throw new Error("Dimensions du modèle 3D invalides.");
-      }
+            const bounds = new THREE.Box3().setFromObject(shirtModel);
 
-      shirtPivot = new THREE.Group();
+            modelSize = bounds.getSize(new THREE.Vector3());
 
-      shirtModel.position.copy(modelCenter).negate();
-
-      shirtPivot.add(shirtModel);
-      scene.add(shirtPivot);
-
-      shirtPivot.rotation.set(
-        0,
-        INITIAL_ROTATION_Y,
-        0
-      );
-
-      shirtModel.traverse((object) => {
-        if (!object.isMesh) return;
-
-        object.frustumCulled = false;
-
-        const geometry = object.geometry;
-        geometry.computeBoundingBox();
-
-        const meshBounds = geometry.boundingBox;
-
-        const meshMinY = meshBounds.min.y;
-        const meshHeight = Math.max(
-          meshBounds.max.y - meshBounds.min.y,
-          0.001
-        );
-
-        const meshCenterX =
-          (meshBounds.min.x + meshBounds.max.x) / 2;
-
-        const meshWidth = Math.max(
-          meshBounds.max.x - meshBounds.min.x,
-          0.001
-        );
-
-        const materials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
-
-        materials.forEach((material) => {
-
-          const windUniforms = {
-            uTime: { value: 0 },
-            uMinY: { value: meshMinY },
-            uInvHeight: { value: 1 / meshHeight },
-            uHeight: { value: meshHeight },
-            uCenterX: { value: meshCenterX },
-            uInvWidth: { value: 1 / meshWidth },
-
-            uSaturation: {
-              value: window.innerWidth >= 768 ? 1.22 : 1.10
-            },
-
-            uContrast: { value: 1.08 }
-          };
-
-          material.onBeforeCompile = (shader) => {
-
-            shader.uniforms.uTime = windUniforms.uTime;
-            shader.uniforms.uMinY = windUniforms.uMinY;
-            shader.uniforms.uInvHeight = windUniforms.uInvHeight;
-            shader.uniforms.uHeight = windUniforms.uHeight;
-            shader.uniforms.uCenterX = windUniforms.uCenterX;
-            shader.uniforms.uInvWidth = windUniforms.uInvWidth;
-            shader.uniforms.uSaturation = windUniforms.uSaturation;
-            shader.uniforms.uContrast = windUniforms.uContrast;
-
-            material.userData.windShader = shader;
-            animatedShaders.push(shader);
-
-            shader.vertexShader = shader.vertexShader.replace(
-              "#include <common>",
-              `#include <common>
-              uniform float uTime;
-              uniform float uMinY;
-              uniform float uInvHeight;
-              uniform float uHeight;
-              uniform float uCenterX;
-              uniform float uInvWidth;`
+            const modelCenter = bounds.getCenter(
+                new THREE.Vector3()
             );
 
-            shader.vertexShader = shader.vertexShader.replace(
-              "#include <begin_vertex>",
-              `#include <begin_vertex>
+            if (
+                !Number.isFinite(modelSize.y) ||
+                modelSize.y <= 0 ||
+                modelSize.x <= 0
+            ) {
+                throw new Error(
+                    "Dimensions du modèle 3D invalides."
+                );
+            }
 
-              float heightRatio = clamp(
-                (position.y - uMinY) * uInvHeight,
-                0.0,
-                1.0
-              );
+            shirtPivot = new THREE.Group();
 
-              float hem = 1.0 - smoothstep(
-                0.10, 0.55, heightRatio
-              );
+            shirtModel.position.copy(modelCenter).negate();
 
-              float sideRatio = abs(
-                (position.x - uCenterX) * uInvWidth
-              );
+            shirtPivot.add(shirtModel);
+            scene.add(shirtPivot);
 
-              float sides = smoothstep(
-                0.25, 0.85, sideRatio
-              );
-
-              float windWeight = max(
-                hem,
-                sides * 0.65
-              );
-
-              float wave = sin(
-                uTime * 1.15 +
-                position.y * 3.0 +
-                position.x * 2.0
-              );
-
-              float wave2 = sin(
-                uTime * 0.75 +
-                position.y * 1.8 -
-                position.x * 2.4
-              );
-
-              transformed.x +=
-                wave * windWeight * uHeight * 0.006;
-
-              transformed.z +=
-                wave2 * windWeight * uHeight * 0.004;
-              `
+            shirtPivot.rotation.set(
+                0,
+                INITIAL_ROTATION_Y,
+                0
             );
 
-            shader.fragmentShader = shader.fragmentShader.replace(
-              "#include <common>",
-              `#include <common>
-              uniform float uSaturation;
-              uniform float uContrast;`
-            );
+            /* =====================================
+               ANIMATION DU TISSU ET DES COULEURS
+            ===================================== */
 
-            shader.fragmentShader = shader.fragmentShader.replace(
-              "#include <color_fragment>",
-              `#include <color_fragment>
+            shirtModel.traverse((object) => {
 
-              float luma = dot(
-                diffuseColor.rgb,
-                vec3(0.2126, 0.7152, 0.0722)
-              );
+                if (!object.isMesh) return;
 
-              diffuseColor.rgb = mix(
-                vec3(luma),
-                diffuseColor.rgb,
-                uSaturation
-              );
+                object.frustumCulled = false;
 
-              diffuseColor.rgb = (
-                diffuseColor.rgb - vec3(0.5)
-              ) * uContrast + vec3(0.5);
+                const geometry = object.geometry;
+                geometry.computeBoundingBox();
 
-              float redDominance = smoothstep(
-                0.025,
-                0.20,
-                diffuseColor.r - max(
-                  diffuseColor.g,
-                  diffuseColor.b
-                )
-              );
+                const meshBounds = geometry.boundingBox;
 
-              diffuseColor.r *= mix(
-                1.0,
-                1.08,
-                redDominance
-              );
+                const meshMinY = meshBounds.min.y;
 
-              diffuseColor.g *= mix(
-                1.0,
-                0.98,
-                redDominance
-              );
+                const meshHeight = Math.max(
+                    meshBounds.max.y - meshBounds.min.y,
+                    0.001
+                );
 
-              diffuseColor.b *= mix(
-                1.0,
-                0.98,
-                redDominance
-              );
+                const meshCenterX =
+                    (meshBounds.min.x + meshBounds.max.x) / 2;
 
-              diffuseColor.rgb = clamp(
-                diffuseColor.rgb,
-                vec3(0.0),
-                vec3(1.0)
-              );
-              `
-            );
-          };
+                const meshWidth = Math.max(
+                    meshBounds.max.x - meshBounds.min.x,
+                    0.001
+                );
 
-          material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v11";
+                const materials = Array.isArray(object.material)
+                    ? object.material
+                    : [object.material];
 
-          material.needsUpdate = true;
-        });
-      });
+                materials.forEach((material) => {
 
-      updateShirtFit();
-      fitTitleText();
+                    const windUniforms = {
 
-      loading.style.display = "none";
+                        uTime: { value: 0 },
 
-      console.log("EKDYS SHIFT : modèle chargé.");
+                        uMinY: { value: meshMinY },
 
-    } catch (error) {
-      loading.textContent = "ERREUR : " + error.message;
-      console.error("Erreur modèle :", error);
+                        uInvHeight: {
+                            value: 1 / meshHeight
+                        },
+
+                        uHeight: {
+                            value: meshHeight
+                        },
+
+                        uCenterX: {
+                            value: meshCenterX
+                        },
+
+                        uInvWidth: {
+                            value: 1 / meshWidth
+                        },
+
+                        /* Saturation naturelle */
+                        uSaturation: {
+                            value: window.innerWidth >= 768
+                                ? 1.08
+                                : 1.04
+                        },
+
+                        /* Contraste léger */
+                        uContrast: {
+                            value: 1.04
+                        }
+                    };
+
+                    material.onBeforeCompile = (shader) => {
+
+                        shader.uniforms.uTime =
+                            windUniforms.uTime;
+
+                        shader.uniforms.uMinY =
+                            windUniforms.uMinY;
+
+                        shader.uniforms.uInvHeight =
+                            windUniforms.uInvHeight;
+
+                        shader.uniforms.uHeight =
+                            windUniforms.uHeight;
+
+                        shader.uniforms.uCenterX =
+                            windUniforms.uCenterX;
+
+                        shader.uniforms.uInvWidth =
+                            windUniforms.uInvWidth;
+
+                        shader.uniforms.uSaturation =
+                            windUniforms.uSaturation;
+
+                        shader.uniforms.uContrast =
+                            windUniforms.uContrast;
+
+                        material.userData.windShader = shader;
+
+                        animatedShaders.push(shader);
+
+                        /* =================================
+                           DÉFORMATION DU TISSU
+                        ================================= */
+
+                        shader.vertexShader =
+                            shader.vertexShader.replace(
+                                "#include <common>",
+                                `#include <common>
+
+                                uniform float uTime;
+                                uniform float uMinY;
+                                uniform float uInvHeight;
+                                uniform float uHeight;
+                                uniform float uCenterX;
+                                uniform float uInvWidth;`
+                            );
+
+                        shader.vertexShader =
+                            shader.vertexShader.replace(
+                                "#include <begin_vertex>",
+                                `#include <begin_vertex>
+
+                                float heightRatio = clamp(
+                                    (position.y - uMinY) * uInvHeight,
+                                    0.0,
+                                    1.0
+                                );
+
+                                float hem = 1.0 - smoothstep(
+                                    0.10,
+                                    0.55,
+                                    heightRatio
+                                );
+
+                                float sideRatio = abs(
+                                    (position.x - uCenterX) * uInvWidth
+                                );
+
+                                float sides = smoothstep(
+                                    0.25,
+                                    0.85,
+                                    sideRatio
+                                );
+
+                                float windWeight = max(
+                                    hem,
+                                    sides * 0.65
+                                );
+
+                                float wave = sin(
+                                    uTime * 1.15 +
+                                    position.y * 3.0 +
+                                    position.x * 2.0
+                                );
+
+                                float wave2 = sin(
+                                    uTime * 0.75 +
+                                    position.y * 1.8 -
+                                    position.x * 2.4
+                                );
+
+                                transformed.x +=
+                                    wave * windWeight * uHeight * 0.006;
+
+                                transformed.z +=
+                                    wave2 * windWeight * uHeight * 0.004;
+                                `
+                            );
+
+                        /* =================================
+                           COULEURS
+                           Pas de renforcement rouge artificiel.
+                        ================================= */
+
+                        shader.fragmentShader =
+                            shader.fragmentShader.replace(
+                                "#include <common>",
+                                `#include <common>
+
+                                uniform float uSaturation;
+                                uniform float uContrast;`
+                            );
+
+                        shader.fragmentShader =
+                            shader.fragmentShader.replace(
+                                "#include <color_fragment>",
+                                `#include <color_fragment>
+
+                                float luma = dot(
+                                    diffuseColor.rgb,
+                                    vec3(0.2126, 0.7152, 0.0722)
+                                );
+
+                                diffuseColor.rgb = mix(
+                                    vec3(luma),
+                                    diffuseColor.rgb,
+                                    uSaturation
+                                );
+
+                                diffuseColor.rgb = (
+                                    diffuseColor.rgb - vec3(0.5)
+                                ) * uContrast + vec3(0.5);
+
+                                /* Couleurs naturelles. */
+                                `
+                            );
+                    };
+
+                    material.customProgramCacheKey = () =>
+                        "ekdys-shift-color-wind-v11";
+
+                    material.needsUpdate = true;
+
+                });
+
+            });
+
+            updateShirtFit();
+            fitTitleText();
+
+            loading.style.display = "none";
+
+            console.log("EKDYS SHIFT : modèle chargé.");
+
+        } catch (error) {
+
+            loading.textContent = "ERREUR : " + error.message;
+
+            console.error("Erreur modèle :", error);
+
+        }
+
+    },
+
+    (progress) => {
+
+        if (progress.total > 0) {
+
+            loading.textContent =
+                "EKDYS — LOADING " +
+                Math.round(
+                    progress.loaded / progress.total * 100
+                ) +
+                "%";
+
+        }
+
+    },
+
+    (error) => {
+
+        loading.textContent =
+            "ERREUR DE CHARGEMENT DU MODÈLE 3D";
+
+        console.error("Erreur GLB :", error);
+
     }
-  },
-
-  (progress) => {
-    if (progress.total > 0) {
-      loading.textContent =
-        "EKDYS — LOADING " +
-        Math.round(progress.loaded / progress.total * 100) +
-        "%";
-    }
-  },
-
-  (error) => {
-    loading.textContent = "ERREUR DE CHARGEMENT DU MODÈLE 3D";
-    console.error("Erreur GLB :", error);
-  }
 );
 
 /* =========================================
@@ -585,18 +690,20 @@ loader.load(
 ========================================= */
 
 window.addEventListener("message", (event) => {
-  if (
-    event.source !== window.parent ||
-    event.data?.type !== "EKDYS_SCROLL"
-  ) {
-    return;
-  }
 
-  scrollTarget = THREE.MathUtils.clamp(
-    Number(event.data.progress) || 0,
-    0,
-    1
-  );
+    if (
+        event.source !== window.parent ||
+        event.data?.type !== "EKDYS_SCROLL"
+    ) {
+        return;
+    }
+
+    scrollTarget = THREE.MathUtils.clamp(
+        Number(event.data.progress) || 0,
+        0,
+        1
+    );
+
 });
 
 /* =========================================
@@ -604,82 +711,114 @@ window.addEventListener("message", (event) => {
 ========================================= */
 
 function resize() {
-  const width = container.clientWidth;
-  const height = container.clientHeight;
 
-  if (!width || !height) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
+    if (!width || !height) return;
 
-  renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
 
-  const saturation = width >= 768 ? 1.22 : 1.10;
+    renderer.setSize(width, height);
 
-  animatedShaders.forEach((shader) => {
-    shader.uniforms.uSaturation.value = saturation;
-  });
+    const saturation =
+        width >= 768 ? 1.08 : 1.04;
 
-  fitTitleText();
-  updateShirtFit();
+    animatedShaders.forEach((shader) => {
+
+        shader.uniforms.uSaturation.value = saturation;
+
+    });
+
+    fitTitleText();
+    updateShirtFit();
 }
 
 const resizeObserver = new ResizeObserver(resize);
+
 resizeObserver.observe(container);
 
 window.addEventListener("resize", resize);
 
 /* =========================================
-   ANIMATION : ROTATION + ZOOM
+   ANIMATION PRINCIPALE
 ========================================= */
 
 renderer.setAnimationLoop(() => {
-  const time = clock.getElapsedTime();
 
-  scrollCurrent += (scrollTarget - scrollCurrent) * 0.09;
+    const time = clock.getElapsedTime();
 
-  animatedShaders.forEach((shader) => {
-    shader.uniforms.uTime.value = time;
-  });
+    /* Lissage du scroll */
+    scrollCurrent +=
+        (scrollTarget - scrollCurrent) * 0.09;
 
-  if (shirtPivot) {
+    /* Animation du tissu */
+    animatedShaders.forEach((shader) => {
 
-    /* ROTATION */
-    shirtPivot.rotation.y =
-      INITIAL_ROTATION_Y -
-      scrollCurrent * SCROLL_ROTATION_Y;
+        shader.uniforms.uTime.value = time;
 
-    /* ZOOM : LE T-SHIRT SE RAPPROCHE DE LA CAMÉRA */
-    camera.position.z = THREE.MathUtils.lerp(
-      CAMERA_Z_FAR,
-      CAMERA_Z_CLOSE,
-      scrollCurrent
+    });
+
+    if (shirtPivot) {
+
+        /* ROTATION */
+
+        shirtPivot.rotation.y =
+            INITIAL_ROTATION_Y -
+            scrollCurrent * SCROLL_ROTATION_Y;
+
+        /* ZOOM DE LA CAMÉRA */
+
+        camera.position.z = THREE.MathUtils.lerp(
+            CAMERA_Z_FAR,
+            CAMERA_Z_CLOSE,
+            scrollCurrent
+        );
+
+        /* AGRANDISSEMENT SUPPLÉMENTAIRE */
+
+        const zoomScale = THREE.MathUtils.lerp(
+            1.0,
+            1.08,
+            scrollCurrent
+        );
+
+        shirtPivot.scale.setScalar(
+            shirtBaseScale * zoomScale
+        );
+
+    }
+
+    /* =====================================
+       DISPARITION DES DEUX TEXTES
+    ===================================== */
+
+    const fadeStart = 0.50;
+    const fadeEnd = 0.78;
+
+    const fadeProgress = THREE.MathUtils.clamp(
+        (scrollCurrent - fadeStart) /
+        (fadeEnd - fadeStart),
+        0,
+        1
     );
-  }
 
-  /* DISPARITION SYNCHRONISÉE DES DEUX TEXTES */
+    const smoothFade =
+        fadeProgress * fadeProgress *
+        (3 - 2 * fadeProgress);
 
-  const fadeStart = 0.50;
-  const fadeEnd = 0.78;
+    const textOpacity = 1 - smoothFade;
 
-  const fadeProgress = THREE.MathUtils.clamp(
-    (scrollCurrent - fadeStart) /
-    (fadeEnd - fadeStart),
-    0,
-    1
-  );
+    title.style.opacity = String(textOpacity);
 
-  const smoothFade =
-    fadeProgress * fadeProgress *
-    (3 - 2 * fadeProgress);
+    frontTitle.style.opacity =
+        String(0.40 * textOpacity);
 
-  const textOpacity = 1 - smoothFade;
+    renderer.render(scene, camera);
 
-  title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.40 * textOpacity);
-
-  renderer.render(scene, camera);
 });
+
 </script>
 
 </body>
