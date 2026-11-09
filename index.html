@@ -215,7 +215,8 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const CAMERA_Z_FAR = 15.0;
-const CAMERA_Z_CLOSE = 12.5;
+/* Plus la valeur est basse, plus le T-shirt se rapproche de la caméra. */
+const CAMERA_Z_CLOSE = 10.8;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -337,8 +338,12 @@ function updateShirtFit() {
     modelSize.z * modelSize.z
   );
 
-  const widthMargin = aspect < 0.75 ? 0.76 : 0.80;
-  const heightMargin = aspect < 0.75 ? 0.76 : 0.80;
+  /*
+     On réserve un peu plus de marge au départ : le zoom progressif
+     peut ainsi rapprocher le T-shirt sans couper ses bords à la fin.
+  */
+  const widthMargin = aspect < 0.75 ? 0.68 : 0.72;
+  const heightMargin = aspect < 0.75 ? 0.68 : 0.72;
 
   const scaleByWidth =
     (visibleWidth * widthMargin) /
@@ -443,7 +448,7 @@ loader.load(
               value: window.innerWidth >= 768 ? 1.22 : 1.10
             },
 
-            uContrast: { value: 1.1 }
+            uContrast: { value: 1.08 }
           };
 
           material.onBeforeCompile = (shader) => {
@@ -684,6 +689,7 @@ renderer.setAnimationLoop(() => {
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
 
+    /* Rotation et zoom utilisent exactement la même progression de scroll. */
     camera.position.z = THREE.MathUtils.lerp(
       CAMERA_Z_FAR,
       CAMERA_Z_CLOSE,
