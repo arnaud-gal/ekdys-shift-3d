@@ -53,21 +53,21 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.03);
+  transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(22.5px, 6.25vw, 95px);
+  font-size: clamp(11.25px, 3.125vw, 47.5px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #7B1026;
+  color: #7B263A;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 18px rgba(123, 16, 38, 0.22),
-    0 0 45px rgba(123, 16, 38, 0.15);
+    0 0 12px rgba(123, 38, 58, 0.22),
+    0 0 25px rgba(123, 38, 58, 0.15);
 }
 
 /* =========================================
@@ -87,7 +87,7 @@ body {
 }
 
 /* =========================================
-   TEXTE AVANT — TRANSLUCIDE
+   TEXTE AVANT — OPACITÉ 80 %
 ========================================= */
 
 #shift-title-front {
@@ -98,20 +98,20 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.03);
+  transform: translate(-50%, -50%) scaleX(1.05);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(22.5px, 6.25vw, 95px);
+  font-size: clamp(11.25px, 3.125vw, 47.5px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #7B1026;
+  color: #7B263A;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 0.35;
+  opacity: 0.80;
   text-shadow:
-    0 0 12px rgba(123, 16, 38, 0.18);
+    0 0 10px rgba(123, 38, 58, 0.12);
 }
 
 #shift-loading {
@@ -133,8 +133,8 @@ body {
 @media (max-width: 600px) {
   #shift-title,
   #shift-title-front {
-    font-size: clamp(18.75px, 6.25vw, 45px);
-    transform: translate(-50%, -50%) scaleX(1.02);
+    font-size: clamp(9.375px, 3.125vw, 22.5px);
+    transform: translate(-50%, -50%) scaleX(1.03);
   }
 }
 </style>
@@ -155,12 +155,10 @@ body {
 
   <div id="shift-background"></div>
 
-  <!-- Couche arrière -->
   <div id="shift-title">SHIFT</div>
 
   <div id="shift-loading">EKDYS — LOADING</div>
 
-  <!-- Couche avant translucide -->
   <div id="shift-title-front">SHIFT</div>
 
 </div>
@@ -680,7 +678,7 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.35 * textOpacity);
+  frontTitle.style.opacity = String(0.80 * textOpacity);
 
   renderer.render(scene, camera);
 });
