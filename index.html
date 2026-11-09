@@ -11,9 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=BBH+Sans+Bartle&display=swap" rel="stylesheet">
 
 <style>
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
     width: 100%;
@@ -40,9 +38,9 @@ html, body {
     pointer-events: none;
 }
 
-#shift-title {
+#shift-title,
+#shift-title-front {
     position: absolute;
-    z-index: 5;
     left: 50%;
     top: 50%;
     width: 100%;
@@ -59,6 +57,10 @@ html, body {
     white-space: nowrap;
     pointer-events: none;
     user-select: none;
+}
+
+#shift-title {
+    z-index: 5;
     opacity: 1;
     text-shadow:
         0 0 12px rgba(154, 59, 50, 0.24),
@@ -78,24 +80,7 @@ html, body {
 }
 
 #shift-title-front {
-    position: absolute;
     z-index: 7;
-    left: 50%;
-    top: 50%;
-    width: 100%;
-    margin: 0;
-    text-align: center;
-    transform: translate(-50%, -50%);
-    transform-origin: center center;
-    font-family: "BBH Sans Bartle", sans-serif;
-    font-size: 100px;
-    font-weight: normal;
-    line-height: 0.85;
-    letter-spacing: -0.025em;
-    color: #9A3B32;
-    white-space: nowrap;
-    pointer-events: none;
-    user-select: none;
     opacity: 0.40;
     text-shadow: 0 0 10px rgba(154, 59, 50, 0.15);
 }
@@ -151,7 +136,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
-   AJUSTEMENT AUTOMATIQUE DU TEXTE
+   TEXTE RESPONSIVE
 ========================================= */
 
 function fitTitleText() {
@@ -183,7 +168,7 @@ document.fonts.ready.then(fitTitleText);
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
-   CAMÉRA
+   CAMÉRA — ZOOM +116 %
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
@@ -193,11 +178,11 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/* DISTANCE INITIALE */
+/* Position initiale */
 const CAMERA_Z_FAR = 15.0;
 
-/* DISTANCE FINALE : +78,6 % DE GROSSISSEMENT */
-const CAMERA_Z_CLOSE = 8.4;
+/* Position finale */
+const CAMERA_Z_CLOSE = 7.3;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -261,7 +246,7 @@ frontLight.position.set(0, 2, 6);
 scene.add(frontLight);
 
 /* =========================================
-   CHARGEMENT DRACO
+   DRACO
 ========================================= */
 
 const dracoLoader = new DRACOLoader();
@@ -373,9 +358,7 @@ loader.load(
                 modelSize.y <= 0 ||
                 modelSize.x <= 0
             ) {
-                throw new Error(
-                    "Dimensions du modèle 3D invalides."
-                );
+                throw new Error("Dimensions du modèle 3D invalides.");
             }
 
             shirtPivot = new THREE.Group();
@@ -385,15 +368,9 @@ loader.load(
             shirtPivot.add(shirtModel);
             scene.add(shirtPivot);
 
-            shirtPivot.rotation.set(
-                0,
-                INITIAL_ROTATION_Y,
-                0
-            );
+            shirtPivot.rotation.set(0, INITIAL_ROTATION_Y, 0);
 
-            /* =================================
-               ANIMATION DU TISSU ET DES COULEURS
-            ================================= */
+            /* ANIMATION TISSU ET COULEURS */
 
             shirtModel.traverse((object) => {
                 if (!object.isMesh) return;
@@ -432,13 +409,9 @@ loader.load(
                         uHeight: { value: meshHeight },
                         uCenterX: { value: meshCenterX },
                         uInvWidth: { value: 1 / meshWidth },
-
                         uSaturation: {
-                            value: window.innerWidth >= 768
-                                ? 1.08
-                                : 1.04
+                            value: window.innerWidth >= 768 ? 1.08 : 1.04
                         },
-
                         uContrast: { value: 1.04 }
                     };
 
@@ -575,23 +548,19 @@ loader.load(
         if (progress.total > 0) {
             loading.textContent =
                 "EKDYS — LOADING " +
-                Math.round(
-                    progress.loaded / progress.total * 100
-                ) +
+                Math.round(progress.loaded / progress.total * 100) +
                 "%";
         }
     },
 
     (error) => {
-        loading.textContent =
-            "ERREUR DE CHARGEMENT DU MODÈLE 3D";
-
+        loading.textContent = "ERREUR DE CHARGEMENT DU MODÈLE 3D";
         console.error("Erreur GLB :", error);
     }
 );
 
 /* =========================================
-   RÉCEPTION DU SCROLL CARRD
+   RÉCEPTION DU SCROLL
 ========================================= */
 
 window.addEventListener("message", (event) => {
@@ -611,7 +580,7 @@ window.addEventListener("message", (event) => {
 });
 
 /* =========================================
-   REDIMENSIONNEMENT AUTOMATIQUE
+   REDIMENSIONNEMENT
 ========================================= */
 
 function resize() {
@@ -625,8 +594,7 @@ function resize() {
 
     renderer.setSize(width, height);
 
-    const saturation =
-        width >= 768 ? 1.08 : 1.04;
+    const saturation = width >= 768 ? 1.08 : 1.04;
 
     animatedShaders.forEach((shader) => {
         shader.uniforms.uSaturation.value = saturation;
@@ -649,6 +617,8 @@ renderer.setAnimationLoop(() => {
 
     const time = clock.getElapsedTime();
 
+    /* LISSAGE DU SCROLL */
+
     scrollCurrent +=
         (scrollTarget - scrollCurrent) * 0.09;
 
@@ -658,13 +628,13 @@ renderer.setAnimationLoop(() => {
 
     if (shirtPivot) {
 
-        /* ROTATION SYNCHRONISÉE */
+        /* ROTATION */
 
         shirtPivot.rotation.y =
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM : +78,6 % À LA FIN */
+        /* ZOOM CAMÉRA */
 
         camera.position.z = THREE.MathUtils.lerp(
             CAMERA_Z_FAR,
@@ -672,12 +642,20 @@ renderer.setAnimationLoop(() => {
             scrollCurrent
         );
 
-        /* PAS DE SCALE SUPPLÉMENTAIRE */
+        /* AGRANDISSEMENT SUPPLÉMENTAIRE */
 
-        shirtPivot.scale.setScalar(shirtBaseScale);
+        const zoomScale = THREE.MathUtils.lerp(
+            1.0,
+            1.05,
+            scrollCurrent
+        );
+
+        shirtPivot.scale.setScalar(
+            shirtBaseScale * zoomScale
+        );
     }
 
-    /* DISPARITION DES DEUX TEXTES */
+    /* DISPARITION DES TEXTES */
 
     const fadeStart = 0.50;
     const fadeEnd = 0.78;
