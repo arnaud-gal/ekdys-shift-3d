@@ -33,8 +33,6 @@ body {
   background: transparent;
 }
 
-/* FOND */
-
 #shift-background {
   position: absolute;
   inset: 0;
@@ -43,44 +41,29 @@ body {
   pointer-events: none;
 }
 
-/* =========================================
-   TEXTE SHIFT
-   Devant le fond, derrière le T-shirt
-========================================= */
-
 #shift-title {
   position: absolute;
   z-index: 5;
-
   left: 50%;
   top: 50%;
-
   width: 100%;
   text-align: center;
-
   transform: translate(-50%, -50%) scaleX(1.15);
   transform-origin: center center;
-
   font-family: "BBH Sans Bartle", sans-serif;
   font-size: clamp(90px, 25vw, 380px);
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-
   color: #d0002b;
-
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-
   opacity: 1;
-
   text-shadow:
     0 0 18px rgba(208, 0, 43, 0.22),
     0 0 45px rgba(208, 0, 43, 0.15);
 }
-
-/* CANVAS 3D : AU-DESSUS DU TEXTE */
 
 #shift-scene canvas {
   position: absolute;
@@ -93,8 +76,6 @@ body {
   touch-action: none;
   user-select: none;
 }
-
-/* CHARGEMENT */
 
 #shift-loading {
   position: absolute;
@@ -151,7 +132,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
-   CAMÉRA
+   CAMÉRA RESPONSIVE
 ========================================= */
 
 const camera = new THREE.PerspectiveCamera(
@@ -161,8 +142,13 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-const CAMERA_Z_FAR = 13.0;
-const CAMERA_Z_CLOSE = 6.4;
+/*
+  Le T-shirt est cadré à CAMERA_Z_FAR.
+  Le rapprochement au scroll reste volontairement modéré.
+*/
+
+const CAMERA_Z_FAR = 15.0;
+const CAMERA_Z_CLOSE = 12.5;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -259,11 +245,12 @@ const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
+   Calculé à la distance la plus éloignée
 ========================================= */
 
 function updateShirtFit() {
   if (!shirtPivot || !shirtModel) return;
-  if (modelSize.y <= 0) return;
+  if (modelSize.y <= 0 || modelSize.x <= 0) return;
 
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -272,38 +259,61 @@ function updateShirtFit() {
 
   const aspect = width / height;
 
+  /*
+    Dimensions visibles à la distance initiale.
+    Le T-shirt doit tenir dans cette zone dès le départ.
+  */
+
   const visibleHeight =
     2 *
     Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
-    CAMERA_Z_CLOSE;
+    CAMERA_Z_FAR;
 
   const visibleWidth = visibleHeight * aspect;
 
-  const rotatedWidth =
-    Math.abs(modelSize.x * Math.cos(INITIAL_ROTATION_Y)) +
-    Math.abs(modelSize.z * Math.sin(INITIAL_ROTATION_Y));
+  /*
+    Largeur conservatrice : tient compte de la profondeur
+    du modèle et de sa rotation.
+  */
 
-  const widthMargin = aspect < 0.75 ? 0.88 : 0.90;
-  const heightMultiplier = aspect < 0.75 ? 1.12 : 1.20;
+  const rotatedWidth = Math.sqrt(
+    modelSize.x * modelSize.x +
+    modelSize.z * modelSize.z
+  );
+
+  /*
+    Marges de sécurité pour les formats étroits,
+    les écrans larges et les fenêtres peu hautes.
+  */
+
+  const widthMargin = aspect < 0.75 ? 0.76 : 0.80;
+  const heightMargin = aspect < 0.75 ? 0.76 : 0.80;
 
   const scaleByWidth =
     (visibleWidth * widthMargin) /
     Math.max(rotatedWidth, 0.001);
 
   const scaleByHeight =
-    (visibleHeight * heightMultiplier) /
+    (visibleHeight * heightMargin) /
     Math.max(modelSize.y, 0.001);
 
-  const baseScale = Math.min(scaleByWidth, scaleByHeight);
+  const baseScale = Math.min(
+    scaleByWidth,
+    scaleByHeight
+  );
 
   shirtPivot.scale.setScalar(baseScale);
 
+  /*
+    Position presque centrée verticalement.
+    Cela évite de couper le haut ou le bas du vêtement.
+  */
+
   const scaledHeight = modelSize.y * baseScale;
-  const bottomAnchor = -visibleHeight * 0.43;
 
   shirtPivot.position.set(
     0,
-    bottomAnchor + scaledHeight / 2,
+    -scaledHeight * 0.02,
     0
   );
 }
@@ -519,7 +529,7 @@ loader.load(
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v8";
+            "ekdys-shift-color-wind-v9";
 
           material.needsUpdate = true;
         });
@@ -572,7 +582,7 @@ window.addEventListener("message", (event) => {
 });
 
 /* =========================================
-   REDIMENSIONNEMENT
+   REDIMENSIONNEMENT AUTOMATIQUE
 ========================================= */
 
 function resize() {
@@ -595,7 +605,9 @@ function resize() {
   updateShirtFit();
 }
 
-new ResizeObserver(resize).observe(container);
+const resizeObserver = new ResizeObserver(resize);
+resizeObserver.observe(container);
+
 window.addEventListener("resize", resize);
 
 /* =========================================
@@ -624,7 +636,7 @@ renderer.setAnimationLoop(() => {
     );
   }
 
-  /* DISPARITION DU TEXTE AU SCROLL */
+  /* DISPARITION DU TEXTE SHIFT AU SCROLL */
 
   const fadeStart = 0.50;
   const fadeEnd = 0.78;
