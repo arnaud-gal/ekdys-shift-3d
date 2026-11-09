@@ -440,10 +440,10 @@ loader.load(
             uInvWidth: { value: 1 / meshWidth },
 
             uSaturation: {
-              value: window.innerWidth >= 768 ? 2.25 : 1.85
+              value: window.innerWidth >= 768 ? 1.22 : 1.10
             },
 
-            uContrast: { value: 1.2 }
+            uContrast: { value: 1.08 }
           };
 
           material.onBeforeCompile = (shader) => {
@@ -555,27 +555,34 @@ loader.load(
 
               diffuseColor.r *= mix(
                 1.0,
-                1.30,
+                1.08,
                 redDominance
               );
 
               diffuseColor.g *= mix(
                 1.0,
-                0.94,
+                0.98,
                 redDominance
               );
 
               diffuseColor.b *= mix(
                 1.0,
-                0.94,
+                0.98,
                 redDominance
+              );
+
+              /* Évite les valeurs RGB négatives ou hors plage */
+              diffuseColor.rgb = clamp(
+                diffuseColor.rgb,
+                vec3(0.0),
+                vec3(1.0)
               );
               `
             );
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v9";
+            "ekdys-shift-color-wind-v10";
 
           material.needsUpdate = true;
         });
@@ -643,7 +650,7 @@ function resize() {
 
   renderer.setSize(width, height);
 
-  const saturation = width >= 768 ? 2.25 : 1.85;
+  const saturation = width >= 768 ? 1.22 : 1.10;
 
   animatedShaders.forEach((shader) => {
     shader.uniforms.uSaturation.value = saturation;
