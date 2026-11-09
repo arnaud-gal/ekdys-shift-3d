@@ -40,8 +40,6 @@ html, body {
     pointer-events: none;
 }
 
-/* TEXTE ARRIÈRE */
-
 #shift-title {
     position: absolute;
     z-index: 5;
@@ -51,7 +49,6 @@ html, body {
     margin: 0;
     text-align: center;
     transform: translate(-50%, -50%);
-    transform-origin: center center;
     font-family: "BBH Sans Bartle", sans-serif;
     font-size: 100px;
     font-weight: normal;
@@ -67,8 +64,6 @@ html, body {
         0 0 25px rgba(154, 59, 50, 0.16);
 }
 
-/* T-SHIRT 3D */
-
 #shift-scene canvas {
     position: absolute;
     inset: 0;
@@ -81,8 +76,6 @@ html, body {
     user-select: none;
 }
 
-/* TEXTE AVANT */
-
 #shift-title-front {
     position: absolute;
     z-index: 7;
@@ -92,7 +85,6 @@ html, body {
     margin: 0;
     text-align: center;
     transform: translate(-50%, -50%);
-    transform-origin: center center;
     font-family: "BBH Sans Bartle", sans-serif;
     font-size: 100px;
     font-weight: normal;
@@ -157,11 +149,10 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 /* =========================================
-   AJUSTEMENT AUTOMATIQUE DU TEXTE
+   TEXTE RESPONSIVE
 ========================================= */
 
 function fitTitleText() {
-
     const availableWidth = container.clientWidth;
     if (!availableWidth) return;
 
@@ -187,7 +178,6 @@ function fitTitleText() {
 }
 
 document.fonts.ready.then(fitTitleText);
-window.addEventListener("resize", fitTitleText);
 
 /* =========================================
    CAMÉRA
@@ -200,11 +190,20 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-/* DISTANCE INITIALE */
-const CAMERA_Z_FAR = 15.0;
+/*
+   OBJECTIF : AGRANDISSEMENT D'ENVIRON 58 %
 
-/* DISTANCE FINALE : +36,4 % D'AGRANDISSEMENT */
-const CAMERA_Z_CLOSE = 11.0;
+   Départ : 15
+   Arrivée : 9.5
+
+   15 / 9.5 = 1.579
+
+   Soit environ 57.9 % d'agrandissement
+   par perspective, à orientation identique.
+*/
+
+const CAMERA_Z_FAR = 15.0;
+const CAMERA_Z_CLOSE = 9.5;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -268,7 +267,7 @@ frontLight.position.set(0, 2, 6);
 scene.add(frontLight);
 
 /* =========================================
-   CHARGEMENT DRACO
+   DRACO
 ========================================= */
 
 const dracoLoader = new DRACOLoader();
@@ -305,7 +304,6 @@ const animatedShaders = [];
 ========================================= */
 
 function updateShirtFit() {
-
     if (!shirtPivot || !shirtModel) return;
     if (modelSize.y <= 0 || modelSize.x <= 0) return;
 
@@ -329,8 +327,6 @@ function updateShirtFit() {
         modelSize.x * modelSize.x +
         modelSize.z * modelSize.z
     );
-
-    /* MARGES DE CADRAGE */
 
     const widthMargin = 0.60;
     const heightMargin = 0.60;
@@ -404,7 +400,7 @@ loader.load(
             );
 
             /* =================================
-               ANIMATION DU TISSU ET DES COULEURS
+               ANIMATION DU TISSU ET COULEURS
             ================================= */
 
             shirtModel.traverse((object) => {
@@ -441,7 +437,6 @@ loader.load(
                     const windUniforms = {
 
                         uTime: { value: 0 },
-
                         uMinY: { value: meshMinY },
 
                         uInvHeight: {
@@ -650,7 +645,7 @@ window.addEventListener("message", (event) => {
 });
 
 /* =========================================
-   REDIMENSIONNEMENT AUTOMATIQUE
+   REDIMENSIONNEMENT
 ========================================= */
 
 function resize() {
@@ -708,7 +703,7 @@ renderer.setAnimationLoop(() => {
             INITIAL_ROTATION_Y -
             scrollCurrent * SCROLL_ROTATION_Y;
 
-        /* ZOOM PROGRESSIF : +36,4 % */
+        /* ZOOM : AGRANDISSEMENT D'ENVIRON 58 % */
 
         camera.position.z = THREE.MathUtils.lerp(
             CAMERA_Z_FAR,
@@ -716,9 +711,13 @@ renderer.setAnimationLoop(() => {
             scrollCurrent
         );
 
+        /* PAS DE SCALE SUPPLÉMENTAIRE */
+
+        shirtPivot.scale.setScalar(shirtBaseScale);
+
     }
 
-    /* DISPARITION DES DEUX TEXTES */
+    /* DISPARITION DU TEXTE */
 
     const fadeStart = 0.50;
     const fadeEnd = 0.78;
