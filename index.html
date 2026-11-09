@@ -7,9 +7,7 @@
 <title>EKDYS — SHIFT 3D</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -25,23 +23,23 @@ html, body {
   height: 100%;
   overflow: hidden;
 
-  /* IMAGE FIXE EN ARRIÈRE-PLAN */
-  background-image: url("./fond-ekdys.png");
+  /* FOND EKDYS */
+  background-color: #080707;
+  background-image: url("https://arnaud-gal.github.io/ekdys-shift-3d/fond-ekdys.png");
   background-position: center center;
   background-size: cover;
   background-repeat: no-repeat;
-
-  touch-action: pan-y;
 }
 
 #shift-scene canvas {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: pan-y;
   cursor: grab;
+  touch-action: pan-y;
 }
 
 #shift-scene canvas:active {
@@ -51,15 +49,13 @@ html, body {
 #shift-loading {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 2;
   display: grid;
   place-items: center;
-  padding: 20px;
   color: #aaa;
   font: 12px Arial, sans-serif;
   letter-spacing: 2px;
   text-align: center;
-  white-space: pre-wrap;
   pointer-events: none;
 }
 </style>
@@ -86,9 +82,9 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
-// ======================================
+// ==========================================
 // CONFIGURATION
-// ======================================
+// ==========================================
 
 const container = document.querySelector("#shift-scene");
 const loading = document.querySelector("#shift-loading");
@@ -102,11 +98,11 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-camera.position.set(0, 0, 4.5);
+camera.position.set(0, 0, 4.8);
 
-// ======================================
+// ==========================================
 // RENDERER
-// ======================================
+// ==========================================
 
 const renderer = new THREE.WebGLRenderer({
   alpha: true,
@@ -125,35 +121,34 @@ renderer.setSize(
 
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-
+renderer.toneMappingExposure = 1.2;
 renderer.setClearColor(0x000000, 0);
 
 container.appendChild(renderer.domElement);
 
-// ======================================
+// ==========================================
 // ÉCLAIRAGE
-// ======================================
+// ==========================================
 
 scene.add(
   new THREE.HemisphereLight(0xffffff, 0x171717, 2)
 );
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3);
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
 keyLight.position.set(2, 3, 4);
 scene.add(keyLight);
 
-const rimLight = new THREE.DirectionalLight(0x9a263b, 1.5);
+const rimLight = new THREE.DirectionalLight(0xa51d36, 1.8);
 rimLight.position.set(-3, 1, -2);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
 fillLight.position.set(-2, -1, 3);
 scene.add(fillLight);
 
-// ======================================
-// CHARGEMENT DRACO
-// ======================================
+// ==========================================
+// DRACO
+// ==========================================
 
 const dracoLoader = new DRACOLoader();
 
@@ -164,19 +159,22 @@ dracoLoader.setDecoderPath(
 const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
-// ======================================
+// ==========================================
 // VARIABLES
-// ======================================
+// ==========================================
 
 const clock = new THREE.Clock();
 
 let shirt = null;
+
 let baseScale = 1;
+let baseX = 0;
 let baseY = 0;
+let baseZ = 0;
 
-let scrollProgress = 0;
+let scrollTarget = 0;
+let scrollCurrent = 0;
 
-// Rotation manuelle
 let manualRotationY = 0;
 let manualRotationX = 0;
 
@@ -184,34 +182,41 @@ let dragging = false;
 let lastPointerX = 0;
 let lastPointerY = 0;
 
-// ======================================
-// PRÉPARATION DU VENT ET DES COULEURS
-// ======================================
+// ==========================================
+// MATÉRIAUX : VENT + ROUGE
+// ==========================================
 
-function prepareWindMaterial(originalMaterial, bounds) {
+function prepareMaterial(originalMaterial, geometryBounds) {
 
   const material = originalMaterial.clone();
 
-  const size = bounds.getSize(new THREE.Vector3());
-  const center = bounds.getCenter(new THREE.Vector3());
+  const size = geometryBounds.getSize(
+    new THREE.Vector3()
+  );
 
-  const windUniforms = {
+  const center = geometryBounds.getCenter(
+    new THREE.Vector3()
+  );
+
+  const height = Math.max(size.y, 0.001);
+  const halfWidth = Math.max(size.x * 0.5, 0.001);
+
+  const uniforms = {
     uTime: { value: 0 },
-    uMinY: { value: bounds.min.y },
-    uInvHeight: { value: 1 / Math.max(size.y, 0.001) },
-    uHeight: { value: size.y },
+    uMinY: { value: geometryBounds.min.y },
+    uInvHeight: { value: 1 / height },
+    uHeight: { value: height },
     uCenterX: { value: center.x },
-    uHalfWidth: { value: Math.max(size.x * 0.5, 0.001) }
+    uHalfWidth: { value: halfWidth }
   };
 
   material.onBeforeCompile = (shader) => {
 
-    // Uniformes du vent
-    Object.assign(shader.uniforms, windUniforms);
+    Object.assign(shader.uniforms, uniforms);
 
     material.userData.windShader = shader;
 
-    // VARIABLES
+    // UNIFORMES
     shader.vertexShader = shader.vertexShader.replace(
       "#include <common>",
       `#include <common>
@@ -225,118 +230,121 @@ function prepareWindMaterial(originalMaterial, bounds) {
       `
     );
 
-    // DÉFORMATION DU TISSU
+    // VENT : DÉFORMATION DU TISSU
     shader.vertexShader = shader.vertexShader.replace(
       "#include <begin_vertex>",
       `#include <begin_vertex>
 
-      float heightRatio = clamp(
+      float h = clamp(
         (position.y - uMinY) * uInvHeight,
         0.0,
         1.0
       );
 
-      // Bas du T-shirt
-      float hem = 1.0 - smoothstep(
-        0.08,
-        0.58,
-        heightRatio
-      );
+      // Bas du vêtement
+      float hem = 1.0 - smoothstep(0.05, 0.60, h);
 
-      // Bords latéraux
+      // Bords du vêtement
       float edge = smoothstep(
-        0.18,
-        0.90,
+        0.15,
+        0.85,
         abs(position.x - uCenterX) / uHalfWidth
       );
 
-      // Mobilité générale
-      float windWeight = max(
-        hem * 0.95,
-        edge * 0.75
+      // Répartition du vent
+      float weight = max(
+        hem * 1.0,
+        edge * 0.85
       );
 
-      // Rafales irrégulières
-      float gust = 0.68 + 0.32 * sin(
-        uTime * 0.65 + position.y * 1.4
+      // Rafales progressives
+      float gust = 0.72 + 0.28 * sin(
+        uTime * 0.8 + position.y * 1.7
       );
 
-      // Grande vague
+      // Grandes ondulations
       float wave1 = sin(
-        uTime * 1.9 +
-        position.y * 4.2 +
-        position.x * 3.1
+        uTime * 2.4 +
+        position.y * 4.0 +
+        position.x * 3.2
       );
 
-      // Petite vague secondaire
       float wave2 = sin(
-        uTime * 2.6 -
-        position.y * 2.8 +
-        position.x * 4.0
+        uTime * 1.8 -
+        position.y * 3.4 +
+        position.x * 4.5
       );
 
-      // Ondulation indépendante
+      // Petites ondulations irrégulières
       float wave3 = sin(
-        uTime * 1.2 +
-        position.x * 2.5 -
-        position.y * 3.5
+        uTime * 3.1 +
+        position.x * 5.0 -
+        position.y * 2.0
       );
 
-      // Déformation horizontale
+      float wave4 = sin(
+        uTime * 1.3 +
+        position.y * 5.0 +
+        position.x * 1.5
+      );
+
+      // Mouvement latéral
       transformed.x +=
-        wave1 * windWeight * uHeight * 0.022 * gust;
+        wave1 * weight * uHeight * 0.038 * gust;
 
-      // Déformation en profondeur
+      // Mouvement avant / arrière
       transformed.z +=
-        wave2 * windWeight * uHeight * 0.018 * gust;
+        wave2 * weight * uHeight * 0.032 * gust;
 
-      // Léger mouvement vertical
+      // Soulèvement du tissu
       transformed.y +=
-        wave3 * windWeight * uHeight * 0.004 * gust;
+        wave3 * weight * uHeight * 0.012 * gust;
+
+      // Ondulation secondaire
+      transformed.z +=
+        wave4 * weight * uHeight * 0.012;
       `
     );
 
-    // ROUGE PLUS FRANC ET PLUS SATURÉ
+    // ROUGE PLUS VIF
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <color_fragment>",
       `#include <color_fragment>
 
-      // Détection des zones dominées par le rouge
-      float ekRedDifference =
+      // Détection des zones rouges
+      float redDifference =
         diffuseColor.r -
         max(diffuseColor.g, diffuseColor.b);
 
-      float ekRedMask = smoothstep(
-        0.025,
-        0.14,
-        ekRedDifference
-      ) * smoothstep(
-        0.06,
-        0.22,
-        diffuseColor.r
+      float redMask = smoothstep(
+        0.015,
+        0.12,
+        redDifference
       );
 
-      // Augmentation de la saturation
-      float ekGray = dot(
+      // Saturation renforcée
+      float grayValue = dot(
         diffuseColor.rgb,
         vec3(0.2126, 0.7152, 0.0722)
       );
 
-      vec3 ekSaturated = mix(
-        vec3(ekGray),
+      vec3 saturatedColor = mix(
+        vec3(grayValue),
         diffuseColor.rgb,
-        1.40
+        1.75
       );
 
-      // Renforcement du rouge
-      ekSaturated.r *= 1.28;
-      ekSaturated.g *= 0.88;
-      ekSaturated.b *= 0.88;
+      // Rouge plus lumineux et plus franc
+      vec3 vividRed = vec3(
+        min(saturatedColor.r * 1.55 + 0.035, 1.0),
+        saturatedColor.g * 0.68,
+        saturatedColor.b * 0.68
+      );
 
       diffuseColor.rgb = mix(
         diffuseColor.rgb,
-        ekSaturated,
-        ekRedMask
+        vividRed,
+        redMask
       );
       `
     );
@@ -344,16 +352,16 @@ function prepareWindMaterial(originalMaterial, bounds) {
   };
 
   material.customProgramCacheKey = () =>
-    "ekdys-shift-wind-red-v2";
+    "ekdys-shift-wind-red-v3";
 
   material.needsUpdate = true;
 
   return material;
 }
 
-// ======================================
-// CHARGEMENT DU T-SHIRT
-// ======================================
+// ==========================================
+// CHARGEMENT DU MODÈLE
+// ==========================================
 
 loader.load(
   "./shift.glb",
@@ -372,20 +380,18 @@ loader.load(
         throw new Error("Dimensions du modèle invalides.");
       }
 
-      // Taille adaptée à la fenêtre
-      baseScale = 2.0 / size.y;
+      // TAILLE ET CENTRAGE
+      baseScale = 1.75 / size.y;
 
       shirt.scale.setScalar(baseScale);
 
-      shirt.position.set(
-        -center.x * baseScale,
-        -center.y * baseScale,
-        -center.z * baseScale
-      );
+      baseX = -center.x * baseScale;
+      baseY = -center.y * baseScale;
+      baseZ = -center.z * baseScale;
 
-      baseY = shirt.position.y;
+      shirt.position.set(baseX, baseY, baseZ);
 
-      // Préparation de chaque mesh
+      // PRÉPARATION DES MESHES
       shirt.traverse((object) => {
 
         if (!object.isMesh) return;
@@ -394,14 +400,15 @@ loader.load(
 
         object.geometry.computeBoundingBox();
 
-        const meshBounds = object.geometry.boundingBox;
-
-        const originals = Array.isArray(object.material)
+        const materials = Array.isArray(object.material)
           ? object.material
           : [object.material];
 
-        const prepared = originals.map((material) =>
-          prepareWindMaterial(material, meshBounds)
+        const prepared = materials.map((material) =>
+          prepareMaterial(
+            material,
+            object.geometry.boundingBox
+          )
         );
 
         object.material = Array.isArray(object.material)
@@ -441,15 +448,17 @@ loader.load(
   }
 );
 
-// ======================================
-// ROTATION MANUELLE
-// ======================================
+// ==========================================
+// ROTATION MANUELLE SOURIS / TACTILE
+// ==========================================
 
 const canvas = renderer.domElement;
 
 canvas.addEventListener("pointerdown", (event) => {
 
-  if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (event.pointerType === "mouse" && event.button !== 0) {
+    return;
+  }
 
   dragging = true;
 
@@ -470,14 +479,12 @@ canvas.addEventListener("pointermove", (event) => {
   lastPointerX = event.clientX;
   lastPointerY = event.clientY;
 
-  // Rotation horizontale
-  manualRotationY += deltaX * 0.008;
+  manualRotationY += deltaX * 0.009;
 
-  // Inclinaison verticale
   manualRotationX = THREE.MathUtils.clamp(
-    manualRotationX + deltaY * 0.006,
-    -0.55,
-    0.55
+    manualRotationX + deltaY * 0.007,
+    -0.65,
+    0.65
   );
 
 });
@@ -490,15 +497,22 @@ canvas.addEventListener("pointerup", stopDragging);
 canvas.addEventListener("pointercancel", stopDragging);
 canvas.addEventListener("lostpointercapture", stopDragging);
 
-// ======================================
-// SCROLL DEPUIS CARRD
-// ======================================
+// ==========================================
+// RÉCEPTION DU SCROLL CARRD
+// ==========================================
 
 window.addEventListener("message", (event) => {
 
-  if (event.data?.type === "EKDYS_SCROLL") {
+  if (event.origin !== "https://ekdys-shift-3d.invalid") {
+    // L'origine réelle est contrôlée ci-dessous.
+  }
 
-    scrollProgress = THREE.MathUtils.clamp(
+  if (
+    event.data?.type === "EKDYS_SCROLL" &&
+    event.source === window.parent
+  ) {
+
+    scrollTarget = THREE.MathUtils.clamp(
       Number(event.data.progress) || 0,
       0,
       1
@@ -508,9 +522,9 @@ window.addEventListener("message", (event) => {
 
 });
 
-// ======================================
+// ==========================================
 // REDIMENSIONNEMENT
-// ======================================
+// ==========================================
 
 function resize() {
 
@@ -528,17 +542,21 @@ function resize() {
 
 new ResizeObserver(resize).observe(container);
 
-// ======================================
+// ==========================================
 // ANIMATION
-// ======================================
+// ==========================================
 
 renderer.setAnimationLoop(() => {
 
   const time = clock.getElapsedTime();
 
+  // Lissage du scroll
+  scrollCurrent +=
+    (scrollTarget - scrollCurrent) * 0.075;
+
   if (shirt) {
 
-    // Vent sur chaque mesh
+    // ACTUALISATION DU VENT
     shirt.traverse((object) => {
 
       if (!object.isMesh) return;
@@ -559,32 +577,38 @@ renderer.setAnimationLoop(() => {
 
     });
 
-    // Rotation automatique discrète
-    const idleRotation = Math.sin(time * 0.22) * 0.012;
-
+    // ROTATION AUTOMATIQUE + SCROLL
     shirt.rotation.y =
       manualRotationY +
-      idleRotation +
-      scrollProgress * 0.20;
+      Math.sin(time * 0.25) * 0.018 +
+      scrollCurrent * 0.48;
 
     shirt.rotation.x =
       manualRotationX +
-      scrollProgress * 0.045;
+      scrollCurrent * 0.12;
 
     shirt.rotation.z =
-      Math.sin(time * 0.45) * 0.009;
+      Math.sin(time * 0.5) * 0.012 +
+      Math.sin(scrollCurrent * Math.PI) * 0.045;
 
-    // Flottement
+    // DÉPLACEMENT HORIZONTAL
+    shirt.position.x =
+      baseX +
+      Math.sin(scrollCurrent * Math.PI) * 0.16;
+
+    // DÉPLACEMENT VERTICAL
     shirt.position.y =
-      baseY + Math.sin(time * 0.8) * 0.018;
+      baseY +
+      Math.sin(time * 0.9) * 0.025 -
+      scrollCurrent * 0.12;
 
-    // Rapprochement au scroll
-    const zoom = 1 + scrollProgress * 0.08;
+    // RAPPROCHEMENT
+    const zoom = 1 + scrollCurrent * 0.20;
 
     shirt.scale.setScalar(baseScale * zoom);
 
     shirt.position.z =
-      scrollProgress * 0.18;
+      baseZ + scrollCurrent * 0.48;
 
   }
 
