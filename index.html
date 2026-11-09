@@ -7,26 +7,33 @@
 <title>EKDYS SHIFT 3D</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html, body {
-  margin: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: transparent !important;
-  border: 0 !important;
-  outline: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 #shift-scene {
-  position: relative;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
   background: transparent;
-  border: 0;
-  outline: 0;
+  border: none;
+  outline: none;
 }
 
 #shift-background {
@@ -34,6 +41,7 @@ html, body {
   inset: 0;
   z-index: 0;
   background: url("./fond-ekdys.png") center / cover no-repeat;
+  border: none;
   pointer-events: none;
 }
 
@@ -41,12 +49,15 @@ html, body {
   position: absolute;
   inset: 0;
   z-index: 1;
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
-  border: 0;
-  outline: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
   touch-action: none;
+  pointer-events: none;
 }
 </style>
 
@@ -71,7 +82,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 const container = document.querySelector("#shift-scene");
-
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
@@ -81,7 +91,6 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-/* T-SHIRT RECULÉ */
 camera.position.set(0, 0, 5.8);
 
 const renderer = new THREE.WebGLRenderer({
@@ -95,22 +104,24 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+
+/* LUMINOSITÉ RÉDUITE */
+renderer.toneMappingExposure = 0.72;
 
 container.appendChild(renderer.domElement);
 
-/* ÉCLAIRAGE */
-scene.add(new THREE.HemisphereLight(0xffffff, 0x171717, 2));
+/* ÉCLAIRAGE PLUS SOMBRE */
+scene.add(new THREE.HemisphereLight(0xffffff, 0x101010, 0.85));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
 keyLight.position.set(2, 3, 4);
 scene.add(keyLight);
 
-const redLight = new THREE.DirectionalLight(0x9a263b, 1.5);
+const redLight = new THREE.DirectionalLight(0x651525, 0.45);
 redLight.position.set(-3, 1, -2);
 scene.add(redLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.25);
 fillLight.position.set(-2, -1, 3);
 scene.add(fillLight);
 
@@ -132,7 +143,7 @@ let baseY = 0;
 let scrollTarget = 0;
 let scrollCurrent = 0;
 
-/* CHARGEMENT DU MODÈLE */
+/* CHARGEMENT DU T-SHIRT */
 loader.load(
   "./shift.glb",
   (gltf) => {
@@ -147,7 +158,6 @@ loader.load(
       return;
     }
 
-    /* ÉCHELLE INITIALE PLUS PETITE */
     baseScale = 1.95 / size.y;
     shirt.scale.setScalar(baseScale);
 
@@ -159,7 +169,7 @@ loader.load(
 
     baseY = shirt.position.y;
 
-    /* VENT TRÈS RÉDUIT */
+    /* VENT LÉGER */
     shirt.traverse((object) => {
       if (!object.isMesh) return;
 
@@ -259,18 +269,18 @@ loader.load(
         };
 
         material.customProgramCacheKey = () =>
-          "ekdys-shift-wind-red-v7";
+          "ekdys-shift-wind-red-v8";
 
         material.needsUpdate = true;
       });
     });
 
     scene.add(shirt);
-    console.log("SHIFT chargé.");
+    console.log("EKDYS SHIFT chargé.");
   },
   undefined,
   (error) => {
-    console.error("Erreur de chargement du GLB :", error);
+    console.error("Erreur de chargement GLB :", error);
   }
 );
 
@@ -307,7 +317,6 @@ renderer.setAnimationLoop(() => {
   scrollCurrent += (scrollTarget - scrollCurrent) * 0.10;
 
   if (shirt) {
-    /* ACTUALISATION DU LÉGER VENT */
     shirt.traverse((object) => {
       if (!object.isMesh) return;
 
@@ -321,25 +330,15 @@ renderer.setAnimationLoop(() => {
       });
     });
 
-    /*
-      SCROLL BAS :
-      rotation vers la gauche + zoom
+    /* ROTATION DIVISÉE PAR 10 */
+    shirt.rotation.y = -scrollCurrent * Math.PI * 0.15;
+    shirt.rotation.x = scrollCurrent * 0.012;
+    shirt.rotation.z = -scrollCurrent * 0.0035;
 
-      SCROLL HAUT :
-      retour inverse + dézoom
-    */
-
-    shirt.rotation.y = -scrollCurrent * Math.PI * 1.5;
-
-    shirt.rotation.x = scrollCurrent * 0.12;
-
-    shirt.rotation.z = -scrollCurrent * 0.035;
-
-    /* ZOOM PROGRESSIF */
+    /* ZOOM CONSERVÉ */
     const zoom = 1 + scrollCurrent * 0.55;
     shirt.scale.setScalar(baseScale * zoom);
 
-    /* LÉGER DÉPLACEMENT */
     shirt.position.y = baseY - scrollCurrent * 0.08;
   }
 
