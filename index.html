@@ -92,8 +92,8 @@ const loading = document.querySelector("#shift-loading");
 
 const scene = new THREE.Scene();
 
-/* Brume noire extrêmement légère */
-scene.fog = new THREE.FogExp2(0x080808, 0.009);
+/* Brume noire très légère */
+scene.fog = new THREE.FogExp2(0x080808, 0.006);
 
 /* =========================================
    CAMÉRA
@@ -106,7 +106,6 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
-/* Plus loin au départ pour garder le T-shirt entier */
 const initialCameraZ = 6.4;
 camera.position.set(0, 0, initialCameraZ);
 
@@ -124,43 +123,43 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = 1.15;
 renderer.setClearColor(0x000000, 0);
-
 renderer.domElement.style.pointerEvents = "none";
+
 container.appendChild(renderer.domElement);
 
 /* =========================================
    ÉCLAIRAGE
 ========================================= */
 
-/* Lumière ambiante */
+/* Lumière ambiante : garde les noirs lisibles */
 scene.add(
-  new THREE.HemisphereLight(0xffffff, 0x29252a, 1.65)
+  new THREE.HemisphereLight(0xffffff, 0x252027, 1.55)
 );
 
-/* Lumière principale : hautes lumières */
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
+/* Haute lumière principale */
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.3);
 keyLight.position.set(1.5, 4, 4);
 scene.add(keyLight);
 
-/* Lumière latérale pour révéler les reliefs */
-const sideLight = new THREE.DirectionalLight(0xe5e8f0, 1.5);
+/* Lumière latérale claire pour les reliefs */
+const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.65);
 sideLight.position.set(-4, 1.5, 2);
 scene.add(sideLight);
 
 /* Contre-jour bordeaux */
-const rimLight = new THREE.DirectionalLight(0x9d263f, 1.0);
+const rimLight = new THREE.DirectionalLight(0xb52a42, 1.15);
 rimLight.position.set(-3, 1, -3);
 scene.add(rimLight);
 
 /* Remplissage frontal */
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.85);
 fillLight.position.set(0, -1, 5);
 scene.add(fillLight);
 
 /* =========================================
-   CHARGEMENT DRACO + GLB
+   CHARGEMENT DRACO
 ========================================= */
 
 const dracoLoader = new DRACOLoader();
@@ -172,25 +171,37 @@ dracoLoader.setDecoderPath(
 const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
+/* =========================================
+   VARIABLES
+========================================= */
+
 const clock = new THREE.Clock();
 
 let shirt = null;
 let baseScale = 1;
 let baseY = 0;
+
 let modelCenter = new THREE.Vector3();
 let modelSize = new THREE.Vector3();
 
 let scrollTarget = 0;
 let scrollCurrent = 0;
 
+const INITIAL_ROTATION_Y = -0.16;
+
 /* =========================================
-   CALCUL DU CADRAGE RESPONSIVE
+   CADRAGE RESPONSIVE
 ========================================= */
 
 function updateShirtFit() {
   if (!shirt || modelSize.y <= 0) return;
 
-  const aspect = container.clientWidth / container.clientHeight;
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  if (!width || !height) return;
+
+  const aspect = width / height;
 
   const visibleHeight =
     2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
@@ -199,11 +210,23 @@ function updateShirtFit() {
   const visibleWidth = visibleHeight * aspect;
 
   /*
-   * Réserve de l'espace autour du T-shirt :
-   * 78 % de la hauteur et de la largeur disponibles.
+   * Largeur réelle projetée avec la rotation initiale.
+   * Cela évite que les épaules soient coupées.
    */
-  const scaleByHeight = (visibleHeight * 0.78) / modelSize.y;
-  const scaleByWidth = (visibleWidth * 0.78) / modelSize.x;
+  const rotatedWidth =
+    Math.abs(modelSize.x * Math.cos(INITIAL_ROTATION_Y)) +
+    Math.abs(modelSize.z * Math.sin(INITIAL_ROTATION_Y));
+
+  /*
+   * Marge de sécurité supplémentaire sur téléphone.
+   */
+  const fitMargin = aspect < 0.75 ? 0.58 : 0.68;
+
+  const scaleByHeight =
+    (visibleHeight * fitMargin) / modelSize.y;
+
+  const scaleByWidth =
+    (visibleWidth * fitMargin) / Math.max(rotatedWidth, 0.001);
 
   baseScale = Math.min(scaleByHeight, scaleByWidth);
 
@@ -219,7 +242,7 @@ function updateShirtFit() {
 }
 
 /* =========================================
-   CHARGEMENT DU MODÈLE
+   CHARGEMENT DU T-SHIRT
 ========================================= */
 
 loader.load(
@@ -230,6 +253,7 @@ loader.load(
       shirt = gltf.scene;
 
       const bounds = new THREE.Box3().setFromObject(shirt);
+
       modelSize = bounds.getSize(new THREE.Vector3());
       modelCenter = bounds.getCenter(new THREE.Vector3());
 
@@ -240,6 +264,8 @@ loader.load(
       ) {
         throw new Error("Dimensions du modèle 3D invalides.");
       }
+
+      shirt.rotation.set(0, INITIAL_ROTATION_Y, 0);
 
       shirt.traverse((object) => {
         if (!object.isMesh) return;
@@ -252,48 +278,6 @@ loader.load(
 
         materials.forEach((material) => {
 
-          /*
-           * Saturation augmentée de 50 %.
-           * Les textures conservent leurs détails.
-           */
-          material.onBeforeCompile = (shader) => {
-
-            shader.fragmentShader =
-              shader.fragmentShader.replace(
-                "#include <common>",
-                `#include <common>`
-              );
-
-            shader.fragmentShader =
-              shader.fragmentShader.replace(
-                "#include <color_fragment>",
-                `#include <color_fragment>
-
-                float ekdysLuma = dot(
-                  diffuseColor.rgb,
-                  vec3(0.2126, 0.7152, 0.0722)
-                );
-
-                diffuseColor.rgb = mix(
-                  vec3(ekdysLuma),
-                  diffuseColor.rgb,
-                  1.5
-                );
-
-                diffuseColor.rgb *= 1.10;
-                `
-              );
-          };
-
-          material.customProgramCacheKey = () =>
-            "ekdys-color-boost-150";
-
-          material.needsUpdate = true;
-
-          /*
-           * Vent discret : aucune modification
-           * de la forme générale du vêtement.
-           */
           const windUniforms = {
             uTime: { value: 0 },
             uMinY: { value: bounds.min.y },
@@ -303,11 +287,11 @@ loader.load(
             uHeight: { value: modelSize.y }
           };
 
-          const previousCompile = material.onBeforeCompile;
-
-          material.onBeforeCompile = (shader, renderer) => {
-
-            previousCompile(shader, renderer);
+          /*
+           * Un seul shader personnalisé :
+           * saturation + renforcement du rouge + vent discret.
+           */
+          material.onBeforeCompile = (shader) => {
 
             shader.uniforms.uTime = windUniforms.uTime;
             shader.uniforms.uMinY = windUniforms.uMinY;
@@ -359,25 +343,79 @@ loader.load(
               );
 
               transformed.x +=
-                wave * windWeight * uHeight * 0.002;
+                wave * windWeight * uHeight * 0.0015;
 
               transformed.z +=
-                wave2 * windWeight * uHeight * 0.0015;
+                wave2 * windWeight * uHeight * 0.001;
+              `
+            );
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <common>",
+              `#include <common>`
+            );
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <color_fragment>",
+              `#include <color_fragment>
+
+              /* Saturation renforcée */
+              float luma = dot(
+                diffuseColor.rgb,
+                vec3(0.2126, 0.7152, 0.0722)
+              );
+
+              diffuseColor.rgb = mix(
+                vec3(luma),
+                diffuseColor.rgb,
+                1.8
+              );
+
+              /* Rouge plus franc, sans griser le bordeaux */
+              float redDominance = smoothstep(
+                0.025,
+                0.20,
+                diffuseColor.r - max(
+                  diffuseColor.g,
+                  diffuseColor.b
+                )
+              );
+
+              diffuseColor.r *= mix(
+                1.0,
+                1.35,
+                redDominance
+              );
+
+              diffuseColor.g *= mix(
+                1.0,
+                0.90,
+                redDominance
+              );
+
+              diffuseColor.b *= mix(
+                1.0,
+                0.92,
+                redDominance
+              );
               `
             );
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v4";
+            "ekdys-shift-red-saturation-wind-v5";
+
+          material.needsUpdate = true;
         });
       });
 
       scene.add(shirt);
+
       updateShirtFit();
 
       loading.style.display = "none";
 
-      console.log("EKDYS SHIFT : modèle chargé et cadré.");
+      console.log("EKDYS SHIFT : modèle chargé.");
 
     } catch (error) {
       loading.textContent = "ERREUR : " + error.message;
@@ -431,17 +469,13 @@ function resize() {
 
   renderer.setSize(width, height);
 
-  /*
-   * Recalcule la taille du T-shirt
-   * selon les dimensions réelles de la fenêtre.
-   */
   updateShirtFit();
 }
 
 new ResizeObserver(resize).observe(container);
 
 /* =========================================
-   ANIMATION ET SCROLL
+   ANIMATION
 ========================================= */
 
 renderer.setAnimationLoop(() => {
@@ -451,7 +485,6 @@ renderer.setAnimationLoop(() => {
 
   if (shirt) {
 
-    /* Mise à jour du vent */
     shirt.traverse((object) => {
       if (!object.isMesh) return;
 
@@ -469,33 +502,26 @@ renderer.setAnimationLoop(() => {
     });
 
     /*
-     * ROTATION AU SCROLL
-     * Le T-shirt pivote progressivement vers la gauche.
-     * Rotation modérée, mais clairement visible.
+     * Rotation initiale + rotation au scroll.
+     * Le mouvement reste visible mais contrôlé.
      */
-    shirt.rotation.y = -scrollCurrent * 0.085;
-    shirt.rotation.x = scrollCurrent * 0.012;
-    shirt.rotation.z = -scrollCurrent * 0.004;
+    shirt.rotation.y = INITIAL_ROTATION_Y - scrollCurrent * 0.28;
+    shirt.rotation.x = scrollCurrent * 0.018;
+    shirt.rotation.z = -scrollCurrent * 0.006;
 
-    /*
-     * ZOOM PROGRESSIF
-     * Petit et entier au départ.
-     * Plus proche et plus grand en descendant.
-     */
-    const zoom = 1 + scrollCurrent * 0.38;
-
+    /* Zoom progressif */
+    const zoom = 1 + scrollCurrent * 0.34;
     shirt.scale.setScalar(baseScale * zoom);
 
-    /* Déplacement vers le spectateur */
-    shirt.position.z = scrollCurrent * 0.25;
+    /* Rapprochement progressif */
+    shirt.position.z = scrollCurrent * 0.22;
     shirt.position.y = baseY;
 
-    camera.position.z = initialCameraZ - scrollCurrent * 0.25;
+    camera.position.z = initialCameraZ - scrollCurrent * 0.20;
   }
 
   renderer.render(scene, camera);
 });
-
 </script>
 </body>
 </html>
