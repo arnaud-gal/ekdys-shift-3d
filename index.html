@@ -53,21 +53,21 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.05);
+  transform: translate(-50%, -50%) scaleX(1.03);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(5.625px, 1.5625vw, 23.75px);
+  font-size: 100px;
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #8A1F32;
+  color: #A12D43;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   opacity: 1;
   text-shadow:
-    0 0 12px rgba(138, 31, 50, 0.22),
-    0 0 25px rgba(138, 31, 50, 0.15);
+    0 0 12px rgba(161, 45, 67, 0.25),
+    0 0 25px rgba(161, 45, 67, 0.18);
 }
 
 /* =========================================
@@ -87,7 +87,7 @@ body {
 }
 
 /* =========================================
-   TEXTE AVANT — OPACITÉ 70 %
+   TEXTE AVANT — OPACITÉ MAXIMALE
 ========================================= */
 
 #shift-title-front {
@@ -98,20 +98,20 @@ body {
   width: 100%;
   margin: 0;
   text-align: center;
-  transform: translate(-50%, -50%) scaleX(1.05);
+  transform: translate(-50%, -50%) scaleX(1.03);
   transform-origin: center center;
   font-family: "BBH Sans Bartle", sans-serif;
-  font-size: clamp(5.625px, 1.5625vw, 23.75px);
+  font-size: 100px;
   font-weight: normal;
   line-height: 0.85;
   letter-spacing: -0.025em;
-  color: #8A1F32;
+  color: #A12D43;
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  opacity: 0.70;
+  opacity: 1;
   text-shadow:
-    0 0 10px rgba(138, 31, 50, 0.12);
+    0 0 10px rgba(161, 45, 67, 0.18);
 }
 
 #shift-loading {
@@ -133,8 +133,7 @@ body {
 @media (max-width: 600px) {
   #shift-title,
   #shift-title-front {
-    font-size: clamp(4.6875px, 1.5625vw, 11.25px);
-    transform: translate(-50%, -50%) scaleX(1.03);
+    transform: translate(-50%, -50%) scaleX(1.02);
   }
 }
 </style>
@@ -179,6 +178,47 @@ const frontTitle = document.querySelector("#shift-title-front");
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x080808, 0.002);
+
+/* =========================================
+   ADAPTATION AUTOMATIQUE DU TEXTE
+========================================= */
+
+function fitTitles() {
+  const availableWidth = container.clientWidth * 0.88;
+
+  if (!availableWidth) return;
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) return;
+
+  const referenceSize = 100;
+
+  context.font = `${referenceSize}px "BBH Sans Bartle"`;
+
+  const measuredWidth = context.measureText("SHIFT").width;
+
+  if (!measuredWidth) return;
+
+  const calculatedSize =
+    (availableWidth / measuredWidth) * referenceSize;
+
+  const finalSize = Math.max(1, calculatedSize);
+
+  title.style.fontSize = `${finalSize}px`;
+  frontTitle.style.fontSize = `${finalSize}px`;
+}
+
+/* Attendre le chargement de la police avant de mesurer le mot */
+
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    fitTitles();
+  });
+}
+
+fitTitles();
 
 /* =========================================
    CAMÉRA RESPONSIVE
@@ -625,6 +665,7 @@ function resize() {
     shader.uniforms.uSaturation.value = saturation;
   });
 
+  fitTitles();
   updateShirtFit();
 }
 
@@ -678,7 +719,9 @@ renderer.setAnimationLoop(() => {
   const textOpacity = 1 - smoothFade;
 
   title.style.opacity = String(textOpacity);
-  frontTitle.style.opacity = String(0.70 * textOpacity);
+
+  /* Texte avant : opacité maximale de 100 % */
+  frontTitle.style.opacity = String(textOpacity);
 
   renderer.render(scene, camera);
 });
