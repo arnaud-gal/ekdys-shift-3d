@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -12,12 +11,9 @@
 <link href="https://fonts.googleapis.com/css2?family=BBH+Sans+Bartle&display=swap" rel="stylesheet">
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   width: 100%;
   height: 100%;
   margin: 0;
@@ -42,13 +38,9 @@ body {
   pointer-events: none;
 }
 
-/* =========================================
-   TEXTE ARRIÈRE — DERRIÈRE LE T-SHIRT
-========================================= */
-
-#shift-title {
+#shift-title,
+#shift-title-front {
   position: absolute;
-  z-index: 5;
   left: 50%;
   top: 50%;
   width: 100%;
@@ -65,15 +57,15 @@ body {
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
+}
+
+#shift-title {
+  z-index: 5;
   opacity: 1;
   text-shadow:
     0 0 12px rgba(154, 59, 50, 0.24),
     0 0 25px rgba(154, 59, 50, 0.16);
 }
-
-/* =========================================
-   T-SHIRT 3D
-========================================= */
 
 #shift-scene canvas {
   position: absolute;
@@ -87,32 +79,10 @@ body {
   user-select: none;
 }
 
-/* =========================================
-   TEXTE AVANT — OPACITÉ 40 %
-========================================= */
-
 #shift-title-front {
-  position: absolute;
   z-index: 7;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  margin: 0;
-  text-align: center;
-  transform: translate(-50%, -50%);
-  transform-origin: center center;
-  font-family: "BBH Sans Bartle", sans-serif;
-  font-size: 100px;
-  font-weight: normal;
-  line-height: 0.85;
-  letter-spacing: -0.025em;
-  color: #9A3B32;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
   opacity: 0.40;
-  text-shadow:
-    0 0 10px rgba(154, 59, 50, 0.15);
+  text-shadow: 0 0 10px rgba(154, 59, 50, 0.15);
 }
 
 #shift-loading {
@@ -141,15 +111,10 @@ body {
 <body>
 
 <div id="shift-scene">
-
   <div id="shift-background"></div>
-
   <div id="shift-title">SHIFT</div>
-
   <div id="shift-loading">EKDYS — LOADING</div>
-
   <div id="shift-title-front">SHIFT</div>
-
 </div>
 
 <script type="module">
@@ -175,7 +140,6 @@ scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
 function fitTitleText() {
   const availableWidth = container.clientWidth;
-
   if (!availableWidth) return;
 
   const targetWidth = availableWidth * 0.94;
@@ -183,13 +147,11 @@ function fitTitleText() {
 
   const measureCanvas = document.createElement("canvas");
   const context = measureCanvas.getContext("2d");
-
   if (!context) return;
 
   context.font = `normal ${testFontSize}px "BBH Sans Bartle", sans-serif`;
 
   const measuredWidth = context.measureText("SHIFT").width;
-
   if (!measuredWidth) return;
 
   const fontSize = targetWidth / (measuredWidth / testFontSize);
@@ -198,9 +160,7 @@ function fitTitleText() {
   frontTitle.style.fontSize = `${fontSize}px`;
 }
 
-/* Attendre le chargement de la police avant de mesurer le mot */
 document.fonts.ready.then(fitTitleText);
-
 window.addEventListener("resize", fitTitleText);
 
 /* =========================================
@@ -214,9 +174,9 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 
+/* ZOOM RENFORCÉ */
 const CAMERA_Z_FAR = 15.0;
-/* Plus la valeur est basse, plus le T-shirt se rapproche de la caméra. */
-const CAMERA_Z_CLOSE = 10.8;
+const CAMERA_Z_CLOSE = 8.0;
 
 camera.position.set(0, 0, CAMERA_Z_FAR);
 
@@ -300,7 +260,6 @@ const clock = new THREE.Clock();
 
 let shirtPivot = null;
 let shirtModel = null;
-
 let modelSize = new THREE.Vector3();
 
 let scrollTarget = 0;
@@ -339,11 +298,12 @@ function updateShirtFit() {
   );
 
   /*
-     On réserve un peu plus de marge au départ : le zoom progressif
-     peut ainsi rapprocher le T-shirt sans couper ses bords à la fin.
+     Marge réduite pour permettre un zoom important
+     tout en conservant le T-shirt dans le cadre.
   */
-  const widthMargin = aspect < 0.75 ? 0.68 : 0.72;
-  const heightMargin = aspect < 0.75 ? 0.68 : 0.72;
+
+  const widthMargin = 0.50;
+  const heightMargin = 0.50;
 
   const scaleByWidth =
     (visibleWidth * widthMargin) /
@@ -576,7 +536,6 @@ loader.load(
                 redDominance
               );
 
-              /* Évite les valeurs RGB négatives ou hors plage */
               diffuseColor.rgb = clamp(
                 diffuseColor.rgb,
                 vec3(0.0),
@@ -587,7 +546,7 @@ loader.load(
           };
 
           material.customProgramCacheKey = () =>
-            "ekdys-shift-color-wind-v10";
+            "ekdys-shift-color-wind-v11";
 
           material.needsUpdate = true;
         });
@@ -671,7 +630,7 @@ resizeObserver.observe(container);
 window.addEventListener("resize", resize);
 
 /* =========================================
-   ANIMATION
+   ANIMATION : ROTATION + ZOOM
 ========================================= */
 
 renderer.setAnimationLoop(() => {
@@ -685,11 +644,12 @@ renderer.setAnimationLoop(() => {
 
   if (shirtPivot) {
 
+    /* ROTATION */
     shirtPivot.rotation.y =
       INITIAL_ROTATION_Y -
       scrollCurrent * SCROLL_ROTATION_Y;
 
-    /* Rotation et zoom utilisent exactement la même progression de scroll. */
+    /* ZOOM : LE T-SHIRT SE RAPPROCHE DE LA CAMÉRA */
     camera.position.z = THREE.MathUtils.lerp(
       CAMERA_Z_FAR,
       CAMERA_Z_CLOSE,
