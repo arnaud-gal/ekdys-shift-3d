@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -26,8 +25,6 @@
       height: 100%;
       outline: none;
       cursor: grab;
-
-      /* Empêche le navigateur d'intercepter le geste */
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
@@ -64,27 +61,30 @@
     const canvas = document.querySelector("#ekdys-column-canvas");
 
     /* =========================================
-       PARAMÈTRES
+       PARAMÈTRES GÉNÉRAUX
     ========================================= */
 
     const INITIAL_ROTATION_Y = 0.34;
 
-    // Limites absolues par rapport à l'orientation initiale
+    // Limites absolues autour de l'orientation initiale
     const MIN_ANGLE_DEG = -25;
     const MAX_ANGLE_DEG = 25;
 
-    // Rotation automatique du scroll
+    // Rotation au scroll
     const SCROLL_SMOOTHING = 0.09;
 
-    // Oscillations aux limites
+    // Oscillations aux extrémités
     const BOUNCE_AMPLITUDE_DEG = 6;
     const BOUNCE_CYCLE_MS = 550;
 
-    // Sensibilité du déplacement horizontal
+    // Sensibilité de la souris et du doigt
     const MOUSE_DEGREES_PER_PIXEL = 0.25;
 
     // Caméra fixe
     const CAMERA_Z = 15;
+
+    // Agrandissement du t-shirt dans la fenêtre
+    const FIT_FACTOR = 0.96;
 
     const TOP_THRESHOLD = 0.001;
     const BOTTOM_THRESHOLD = 0.999;
@@ -106,17 +106,20 @@
     let shirtPivot = null;
     let shirtModel = null;
 
-    // Décalage manuel de la souris
+    // Dimensions originales du modèle, avant mise à l'échelle
+    let originalModelSize = null;
+
+    // Décalage manuel appliqué par la souris
     let mouseOffsetDeg = 0;
 
-    // Contrôle du glissement
+    // Gestion du glissement
     let isDragging = false;
     let activePointerId = null;
     let dragStartX = 0;
     let dragStartAngleDeg = 0;
 
     /* =========================================
-       SCÈNE
+       SCÈNE ET CAMÉRA
     ========================================= */
 
     const scene = new THREE.Scene();
@@ -193,7 +196,7 @@
     scene.add(frontLight);
 
     /* =========================================
-       PIVOT DU T-SHIRT
+       PIVOT CENTRAL
     ========================================= */
 
     shirtPivot = new THREE.Group();
@@ -201,7 +204,7 @@
     scene.add(shirtPivot);
 
     /* =========================================
-       CHARGEMENT DU MODÈLE
+       CHARGEMENT DU MODÈLE 3D
     ========================================= */
 
     const loader = new GLTFLoader();
@@ -220,13 +223,20 @@
       function (gltf) {
         shirtModel = gltf.scene;
 
+        // On centre le modèle avant de calculer sa taille
         const initialBox = new THREE.Box3().setFromObject(shirtModel);
         const center = new THREE.Vector3();
 
         initialBox.getCenter(center);
 
-        // Centrage du modèle sur son pivot
         shirtModel.position.sub(center);
+
+        // On mémorise les dimensions originales une seule fois.
+        // Cela évite que le t-shirt rétrécisse à chaque resize.
+        const centeredBox = new THREE.Box3().setFromObject(shirtModel);
+        originalModelSize = new THREE.Vector3();
+
+        centeredBox.getSize(originalModelSize);
 
         shirtPivot.add(shirtModel);
 
@@ -245,21 +255,16 @@
     );
 
     /* =========================================
-       ADAPTATION À LA FENÊTRE
+       ADAPTATION DE LA TAILLE
     ========================================= */
 
     function fitShirt() {
-      if (!shirtModel) return;
+      if (!shirtModel || !originalModelSize) return;
 
-      const box = new THREE.Box3().setFromObject(shirtModel);
-      const size = new THREE.Vector3();
+      const width = Math.max(canvas.clientWidth, 1);
+      const height = Math.max(canvas.clientHeight, 1);
 
-      box.getSize(size);
-
-      const aspect = Math.max(
-        canvas.clientWidth / Math.max(canvas.clientHeight, 1),
-        0.1
-      );
+      const aspect = width / height;
 
       const verticalFov = THREE.MathUtils.degToRad(camera.fov);
 
@@ -268,29 +273,39 @@
 
       const visibleWidth = visibleHeight * aspect;
 
-      const modelHeight = Math.max(size.y, 0.001);
+      const modelHeight = Math.max(originalModelSize.y, 0.001);
 
       const modelWidth = Math.max(
-        Math.sqrt(size.x * size.x + size.z * size.z),
+        Math.sqrt(
+          originalModelSize.x * originalModelSize.x +
+          originalModelSize.z * originalModelSize.z
+        ),
         0.001
       );
 
-      const scaleHeight = visibleHeight * 0.88 / modelHeight;
-      const scaleWidth = visibleWidth * 0.88 / modelWidth;
+      const scaleHeight =
+        (visibleHeight * FIT_FACTOR) / modelHeight;
 
-      shirtModel.scale.setScalar(
-        Math.min(scaleHeight, scaleWidth)
+      const scaleWidth =
+        (visibleWidth * FIT_FACTOR) / modelWidth;
+
+      const finalScale = Math.min(
+        scaleHeight,
+        scaleWidth
       );
+
+      // Remplacement de l'échelle, jamais multiplication cumulative
+      shirtModel.scale.setScalar(finalScale);
     }
 
     /* =========================================
-       RÉCEPTION DU SCROLL DE CARRD
+       RÉCEPTION DU SCROLL CARRD
     ========================================= */
 
     function receiveScrollProgress(progress) {
       const p = THREE.MathUtils.clamp(progress, 0, 1);
 
-      // Initialisation à la position réelle de la page
+      // Première réception : position réelle de la page
       if (!initializedScroll) {
         initializedScroll = true;
 
@@ -305,8 +320,29 @@
       }
 
       const previous = lastReceivedProgress;
+      const hasMoved = Math.abs(p - previous) > 0.00001;
 
-      // Réarmement de la détection des extrémités
+      // Dès que l'utilisateur recommence à scroller :
+      // on enlève la commande manuelle de la souris.
+      if (hasMoved) {
+        mouseOffsetDeg = 0;
+
+        // Une nouvelle progression du scroll reprend la main
+        // et interrompt une oscillation éventuellement en cours.
+        bounceState = null;
+
+        // Réarmement si l'utilisateur quitte une extrémité
+        if (p < BOTTOM_THRESHOLD) {
+          pendingBounce =
+            pendingBounce === "bottom" ? null : pendingBounce;
+        }
+
+        if (p > TOP_THRESHOLD) {
+          pendingBounce =
+            pendingBounce === "top" ? null : pendingBounce;
+        }
+      }
+
       if (p > TOP_THRESHOLD) {
         hasLeftTop = true;
       }
@@ -315,23 +351,7 @@
         hasLeftBottom = true;
       }
 
-      // Annulation d'une oscillation en attente
-      // si l'utilisateur repart avant l'arrivée
-      if (
-        pendingBounce === "bottom" &&
-        p < BOTTOM_THRESHOLD
-      ) {
-        pendingBounce = null;
-      }
-
-      if (
-        pendingBounce === "top" &&
-        p > TOP_THRESHOLD
-      ) {
-        pendingBounce = null;
-      }
-
-      // Arrivée en bas
+      // Détection d'arrivée en bas
       if (
         p >= BOTTOM_THRESHOLD &&
         previous < BOTTOM_THRESHOLD &&
@@ -341,7 +361,7 @@
         hasLeftBottom = false;
       }
 
-      // Arrivée en haut
+      // Détection d'arrivée en haut
       if (
         p <= TOP_THRESHOLD &&
         previous > TOP_THRESHOLD &&
@@ -356,7 +376,6 @@
     }
 
     window.addEventListener("message", function (event) {
-      // Seule la fenêtre parente peut commander le scroll
       if (event.source !== window.parent) return;
 
       if (
@@ -391,8 +410,8 @@
       };
 
       console.info(
-        "EKDYS : " + endpoint +
-        " atteint " + cycles +
+        "EKDYS : limite " + endpoint +
+        " atteinte " + cycles +
         " fois — " + cycles + " aller-retour(s)."
       );
     }
@@ -410,7 +429,8 @@
       const cycleProgress =
         (elapsed % BOUNCE_CYCLE_MS) / BOUNCE_CYCLE_MS;
 
-      // Départ, excursion, retour à la position de limite
+      // Oscillation qui part de la limite,
+      // s'en éloigne puis revient à la limite.
       const oscillation =
         (1 - Math.cos(2 * Math.PI * cycleProgress)) / 2;
 
@@ -418,7 +438,7 @@
     }
 
     /* =========================================
-       ROTATION AUTOMATIQUE
+       ROTATION AUTOMATIQUE DU SCROLL
     ========================================= */
 
     function getAutomaticAngleDeg(now) {
@@ -429,14 +449,15 @@
     }
 
     /* =========================================
-       ROTATION FINALE
+       ANGLE FINAL : SCROLL + SOURIS
     ========================================= */
 
     function getFinalAngleDeg(now) {
-      const automaticAngle = getAutomaticAngleDeg(now);
+      const combinedAngle =
+        getAutomaticAngleDeg(now) + mouseOffsetDeg;
 
       return THREE.MathUtils.clamp(
-        automaticAngle + mouseOffsetDeg,
+        combinedAngle,
         MIN_ANGLE_DEG,
         MAX_ANGLE_DEG
       );
@@ -453,11 +474,10 @@
     }
 
     /* =========================================
-       CONTRÔLE SOURIS ET TACTILE
+       SOURIS ET ÉCRAN TACTILE
     ========================================= */
 
     canvas.addEventListener("pointerdown", function (event) {
-      // Souris : clic gauche uniquement
       if (event.pointerType === "mouse" && event.button !== 0) {
         return;
       }
@@ -468,10 +488,7 @@
       activePointerId = event.pointerId;
 
       dragStartX = event.clientX;
-
-      dragStartAngleDeg = getFinalAngleDeg(
-        performance.now()
-      );
+      dragStartAngleDeg = getFinalAngleDeg(performance.now());
 
       canvas.classList.add("dragging");
 
@@ -505,7 +522,6 @@
         performance.now()
       );
 
-      // On conserve la position manuelle comme décalage
       mouseOffsetDeg = limitedAngleDeg - automaticAngle;
     });
 
@@ -573,7 +589,8 @@
       scrollCurrent +=
         (scrollTarget - scrollCurrent) * SCROLL_SMOOTHING;
 
-      // Déclenche les oscillations à l'arrivée effective
+      // Déclenche les oscillations uniquement après
+      // avoir effectivement atteint l'extrémité.
       if (
         pendingBounce === "bottom" &&
         scrollCurrent >= 0.995
@@ -597,8 +614,11 @@
       renderer.render(scene, camera);
     }
 
-    resizeRenderer();
+    /* =========================================
+       INITIALISATION
+    ========================================= */
 
+    resizeRenderer();
     requestAnimationFrame(animate);
   </script>
 </body>
