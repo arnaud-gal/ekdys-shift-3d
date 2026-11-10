@@ -2,813 +2,862 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EKDYS — SHIFT COLUMN 3D</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EKDYS — SHIFT COLUMN 3D</title>
 
-<style>
-* { box-sizing: border-box; }
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: transparent;
-}
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+    }
 
-#shift-scene {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  overflow: hidden;
-  background: transparent;
-  isolation: isolate;
-}
+    #shift-scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      overflow: hidden;
+      background: transparent;
+      isolation: isolate;
+    }
 
-#shift-background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: url("./fond-ekdys.png") center / cover no-repeat;
-  pointer-events: none;
-}
+    #shift-background {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: url("./fond-ekdys.png") center / cover no-repeat;
+      pointer-events: none;
+    }
 
-#shift-scene canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: block;
-  width: 100%;
-  height: 100%;
-  outline: none;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
+    #shift-scene canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
 
-#shift-scene canvas.dragging {
-  cursor: grabbing;
-}
+    #shift-scene canvas.dragging {
+      cursor: grabbing;
+    }
 
-#shift-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: grid;
-  place-items: center;
-  color: #ddd;
-  font: 12px Arial, sans-serif;
-  letter-spacing: 2px;
-  pointer-events: none;
-}
-</style>
+    #shift-loading {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: grid;
+      place-items: center;
+      color: #ddd;
+      font: 12px Arial, sans-serif;
+      letter-spacing: 2px;
+      pointer-events: none;
+    }
+  </style>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-  }
-}
-</script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 
 <body>
-<div id="shift-scene">
-  <div id="shift-background"></div>
-  <div id="shift-loading">EKDYS — LOADING</div>
-</div>
+  <div id="shift-scene">
+    <div id="shift-background"></div>
+    <div id="shift-loading">EKDYS — LOADING</div>
+  </div>
 
-<script type="module">
-import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
-const container = document.querySelector("#shift-scene");
-const loading = document.querySelector("#shift-loading");
+    /* =========================================
+       EKDYS — SHIFT COLUMN 3D
+    ========================================= */
 
-/* PARAMÈTRES */
+    const container = document.querySelector("#shift-scene");
+    const loading = document.querySelector("#shift-loading");
 
-const INITIAL_ROTATION_Y = 0.34;
+    /* =========================================
+       PARAMÈTRES GÉNÉRAUX
+    ========================================= */
 
-const SCROLL_MAX_DEG = 25;
-const MIN_ANGLE_DEG = -25;
-const MAX_ANGLE_DEG = 25;
+    const INITIAL_ROTATION_Y = 0.34;
 
-const ROTATION_SMOOTHING = 0.12;
-const SCROLL_SMOOTHING = 0.09;
+    // Une progression complète du scroll représente 25° de rotation.
+    const SCROLL_MAX_DEG = 25;
 
-const BOUNCE_AMPLITUDE_DEG = 9;
-const BOUNCE_CYCLE_MS = 780;
+    // Limites absolues autour de l'orientation initiale.
+    const MIN_ANGLE_DEG = -25;
+    const MAX_ANGLE_DEG = 25;
 
-const DRAG_SENSITIVITY = 0.25;
-const CAMERA_Z_FAR = 15.0;
+    // Lissage de la rotation et de la progression.
+    const ROTATION_SMOOTHING = 0.12;
+    const SCROLL_SMOOTHING = 0.09;
 
-const TOP_THRESHOLD = 0.001;
-const BOTTOM_THRESHOLD = 0.999;
+    // Oscillation infinie quand le scroll atteint le haut ou le bas.
+    const BOUNCE_AMPLITUDE_DEG = 9;
+    const BOUNCE_CYCLE_MS = 780;
 
-/* ÉTAT */
+    // Contrôle souris / doigt : puissance divisée par six.
+    // Les angles maximums de rotation ne sont pas modifiés.
+    const DRAG_SENSITIVITY = 0.25 / 6;
 
-let scrollTarget = 0;
-let scrollCurrent = 0;
+    // Caméra fixe.
+    const CAMERA_Z_FAR = 15.0;
 
-let initializedScroll = false;
-let lastReceivedProgress = null;
+    const TOP_THRESHOLD = 0.001;
+    const BOTTOM_THRESHOLD = 0.999;
 
-let hasLeftTop = false;
-let hasLeftBottom = false;
+    /* =========================================
+       ÉTAT DU SCROLL
+    ========================================= */
 
-let pendingBounce = null;
-let bounceState = null;
+    let scrollTarget = 0;
+    let scrollCurrent = 0;
 
-let scrollAngleTargetDeg = 0;
-let scrollAngleCurrentDeg = 0;
-let mouseOffsetDeg = 0;
+    let initializedScroll = false;
+    let lastReceivedProgress = null;
 
-let isDragging = false;
-let activePointerId = null;
-let dragStartX = 0;
-let dragStartAngleDeg = 0;
+    let hasLeftTop = false;
+    let hasLeftBottom = false;
+    let pendingBounce = null;
+    let bounceState = null;
 
-/* SCÈNE */
+    /* =========================================
+       ÉTAT DE LA ROTATION
+    ========================================= */
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x080808, 0.002);
+    let scrollAngleTargetDeg = 0;
+    let scrollAngleCurrentDeg = 0;
+    let mouseOffsetDeg = 0;
 
-/* CAMÉRA */
+    let isDragging = false;
+    let activePointerId = null;
+    let dragStartX = 0;
+    let dragStartAngleDeg = 0;
 
-const camera = new THREE.PerspectiveCamera(
-  32,
-  1,
-  0.01,
-  100
-);
+    /* =========================================
+       SCÈNE
+    ========================================= */
 
-camera.position.set(0, 0, CAMERA_Z_FAR);
-camera.lookAt(0, 0, 0);
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
-/* RENDERER */
+    /* =========================================
+       CAMÉRA
+    ========================================= */
 
-const renderer = new THREE.WebGLRenderer({
-  alpha: true,
-  antialias: true,
-  powerPreference: "high-performance"
-});
-
-renderer.setPixelRatio(
-  Math.min(window.devicePixelRatio || 1, 1.5)
-);
-
-const initialWidth = Math.max(container.clientWidth, 1);
-const initialHeight = Math.max(container.clientHeight, 1);
-
-renderer.setSize(initialWidth, initialHeight);
-
-camera.aspect = initialWidth / initialHeight;
-camera.updateProjectionMatrix();
-
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-renderer.setClearColor(0x000000, 0);
-
-container.appendChild(renderer.domElement);
-
-const canvas = renderer.domElement;
-
-/* ÉCLAIRAGE EKDYS */
-
-scene.add(
-  new THREE.HemisphereLight(
-    0xffffff,
-    0x38313a,
-    1.8
-  )
-);
-
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
-keyLight.position.set(1.5, 4, 4);
-scene.add(keyLight);
-
-const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.8);
-sideLight.position.set(-4, 1.5, 2);
-scene.add(sideLight);
-
-const rimLight = new THREE.DirectionalLight(0xd43b58, 1.4);
-rimLight.position.set(-3, 1, -3);
-scene.add(rimLight);
-
-const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
-fillLight.position.set(0, -1, 5);
-scene.add(fillLight);
-
-const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
-frontLight.position.set(0, 2, 6);
-scene.add(frontLight);
-
-/* CHARGEMENT */
-
-const dracoLoader = new DRACOLoader();
-
-dracoLoader.setDecoderPath(
-  "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
-);
-
-const loader = new GLTFLoader();
-loader.setDRACOLoader(dracoLoader);
-
-const clock = new THREE.Clock();
-
-let shirtPivot = null;
-let shirtModel = null;
-let modelSize = new THREE.Vector3();
-
-const animatedShaders = [];
-
-/* CADRAGE RESPONSIVE */
-
-function updateShirtFit() {
-  if (!shirtModel || !shirtPivot) return;
-
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-
-  if (width <= 0 || height <= 0) return;
-
-  const visibleHeight =
-    2 * CAMERA_Z_FAR *
-    Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-
-  const visibleWidth = visibleHeight * (width / height);
-
-  // Calcul de la largeur projetée maximale sur les angles possibles.
-  let maxProjectedWidth = 0;
-
-  for (let i = 0; i <= 50; i++) {
-    const angle = THREE.MathUtils.degToRad(
-      MIN_ANGLE_DEG +
-      (MAX_ANGLE_DEG - MIN_ANGLE_DEG) * i / 50
+    const camera = new THREE.PerspectiveCamera(
+      32,
+      1,
+      0.01,
+      100
     );
 
-    const yaw = INITIAL_ROTATION_Y + angle;
+    camera.position.set(0, 0, CAMERA_Z_FAR);
+    camera.lookAt(0, 0, 0);
 
-    const projectedWidth =
-      Math.abs(Math.cos(yaw)) * modelSize.x +
-      Math.abs(Math.sin(yaw)) * modelSize.z;
+    /* =========================================
+       RENDERER
+    ========================================= */
 
-    maxProjectedWidth = Math.max(
-      maxProjectedWidth,
-      projectedWidth
-    );
-  }
-
-  // Le modèle occupe désormais 90 % du cadre disponible.
-  const widthScale =
-    (visibleWidth * 0.90) /
-    Math.max(maxProjectedWidth, 0.001);
-
-  const heightScale =
-    (visibleHeight * 0.90) /
-    Math.max(modelSize.y, 0.001);
-
-  const finalScale = Math.min(widthScale, heightScale);
-
-  shirtPivot.scale.setScalar(finalScale);
-
-  shirtPivot.position.set(
-    0,
-    -modelSize.y * finalScale * 0.02,
-    0
-  );
-}
-
-/* MODÈLE SHIFT */
-
-loader.load(
-  "./shift.glb",
-
-  (gltf) => {
-    shirtModel = gltf.scene;
-
-    const bounds = new THREE.Box3().setFromObject(shirtModel);
-
-    const center = bounds.getCenter(new THREE.Vector3());
-
-    modelSize = bounds.getSize(new THREE.Vector3());
-
-    if (
-      modelSize.y <= 0 ||
-      modelSize.x <= 0 ||
-      !Number.isFinite(modelSize.y)
-    ) {
-      loading.textContent = "ERREUR MODÈLE 3D";
-      console.error("Dimensions invalides du modèle SHIFT.");
-      return;
-    }
-
-    shirtModel.position.copy(center).negate();
-
-    shirtPivot = new THREE.Group();
-    shirtPivot.add(shirtModel);
-    scene.add(shirtPivot);
-
-    shirtPivot.rotation.y = INITIAL_ROTATION_Y;
-
-    /* SHADERS DU TISSU */
-
-    shirtModel.traverse((object) => {
-      if (!object.isMesh) return;
-
-      object.frustumCulled = false;
-
-      const geometry = object.geometry;
-      geometry.computeBoundingBox();
-
-      const meshBounds = geometry.boundingBox;
-      const meshMinY = meshBounds.min.y;
-
-      const meshHeight = Math.max(
-        meshBounds.max.y - meshBounds.min.y,
-        0.001
-      );
-
-      const meshCenterX =
-        (meshBounds.min.x + meshBounds.max.x) / 2;
-
-      const meshWidth = Math.max(
-        meshBounds.max.x - meshBounds.min.x,
-        0.001
-      );
-
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : [object.material];
-
-      materials.forEach((material) => {
-        const uniforms = {
-          uTime: { value: 0 },
-          uMinY: { value: meshMinY },
-          uInvHeight: { value: 1 / meshHeight },
-          uHeight: { value: meshHeight },
-          uCenterX: { value: meshCenterX },
-          uInvWidth: { value: 1 / meshWidth },
-          uSaturation: {
-            value: window.innerWidth >= 768 ? 1.08 : 1.04
-          },
-          uContrast: { value: 1.04 }
-        };
-
-        material.onBeforeCompile = (shader) => {
-          Object.assign(shader.uniforms, uniforms);
-
-          material.userData.windShader = shader;
-          animatedShaders.push(shader);
-
-          shader.vertexShader = shader.vertexShader.replace(
-            "#include <common>",
-            `#include <common>
-            uniform float uTime;
-            uniform float uMinY;
-            uniform float uInvHeight;
-            uniform float uHeight;
-            uniform float uCenterX;
-            uniform float uInvWidth;`
-          );
-
-          shader.vertexShader = shader.vertexShader.replace(
-            "#include <begin_vertex>",
-            `#include <begin_vertex>
-
-            float heightRatio = clamp(
-              (position.y - uMinY) * uInvHeight,
-              0.0,
-              1.0
-            );
-
-            float hem = 1.0 - smoothstep(
-              0.10,
-              0.55,
-              heightRatio
-            );
-
-            float sideRatio = abs(
-              (position.x - uCenterX) * uInvWidth
-            );
-
-            float sides = smoothstep(
-              0.25,
-              0.85,
-              sideRatio
-            );
-
-            float windWeight = max(
-              hem,
-              sides * 0.65
-            );
-
-            float wave = sin(
-              uTime * 1.15 +
-              position.y * 3.0 +
-              position.x * 2.0
-            );
-
-            float wave2 = sin(
-              uTime * 0.75 +
-              position.y * 1.8 -
-              position.x * 2.4
-            );
-
-            transformed.x +=
-              wave * windWeight * uHeight * 0.006;
-
-            transformed.z +=
-              wave2 * windWeight * uHeight * 0.004;
-            `
-          );
-
-          shader.fragmentShader = shader.fragmentShader.replace(
-            "#include <common>",
-            `#include <common>
-            uniform float uSaturation;
-            uniform float uContrast;`
-          );
-
-          shader.fragmentShader = shader.fragmentShader.replace(
-            "#include <color_fragment>",
-            `#include <color_fragment>
-
-            float luma = dot(
-              diffuseColor.rgb,
-              vec3(0.2126, 0.7152, 0.0722)
-            );
-
-            diffuseColor.rgb = mix(
-              vec3(luma),
-              diffuseColor.rgb,
-              uSaturation
-            );
-
-            diffuseColor.rgb = (
-              diffuseColor.rgb - vec3(0.5)
-            ) * uContrast + vec3(0.5);
-            `
-          );
-        };
-
-        material.customProgramCacheKey = () =>
-          "ekdys-shift-column-v14-scroll-flip-large";
-
-        material.needsUpdate = true;
-      });
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: "high-performance"
     });
 
-    updateShirtFit();
-
-    loading.style.display = "none";
-
-    console.log("EKDYS SHIFT : modèle chargé.");
-  },
-
-  (progress) => {
-    if (progress.total > 0) {
-      loading.textContent =
-        "EKDYS — LOADING " +
-        Math.round(progress.loaded / progress.total * 100) +
-        "%";
-    }
-  },
-
-  (error) => {
-    loading.textContent = "ERREUR DE CHARGEMENT";
-    console.error("Erreur de chargement SHIFT :", error);
-  }
-);
-
-/* ROTATION ET OSCILLATION */
-
-function getBounceOffsetDeg(now) {
-  if (!bounceState) return 0;
-
-  const elapsed = now - bounceState.startTime;
-
-  const cycleProgress =
-    (elapsed % BOUNCE_CYCLE_MS) / BOUNCE_CYCLE_MS;
-
-  const wave =
-    (1 - Math.cos(2 * Math.PI * cycleProgress)) / 2;
-
-  const availableRoom =
-    bounceState.endpoint === "bottom"
-      ? MAX_ANGLE_DEG - scrollAngleCurrentDeg
-      : scrollAngleCurrentDeg - MIN_ANGLE_DEG;
-
-  const amplitude = Math.max(
-    0,
-    Math.min(BOUNCE_AMPLITUDE_DEG, availableRoom)
-  );
-
-  return bounceState.endpoint === "bottom"
-    ? amplitude * wave
-    : -amplitude * wave;
-}
-
-function getAutomaticAngleDeg(now) {
-  return scrollAngleCurrentDeg + getBounceOffsetDeg(now);
-}
-
-function getFinalAngleDeg(now) {
-  return THREE.MathUtils.clamp(
-    getAutomaticAngleDeg(now) + mouseOffsetDeg,
-    MIN_ANGLE_DEG,
-    MAX_ANGLE_DEG
-  );
-}
-
-function updateShirtRotation(now) {
-  if (!shirtPivot) return;
-
-  shirtPivot.rotation.y =
-    INITIAL_ROTATION_Y +
-    THREE.MathUtils.degToRad(getFinalAngleDeg(now));
-}
-
-function startBounce(endpoint) {
-  bounceState = {
-    endpoint,
-    startTime: performance.now()
-  };
-}
-
-/* RÉCEPTION DU SCROLL */
-
-function receiveScrollProgress(progress) {
-  const p = THREE.MathUtils.clamp(progress, 0, 1);
-
-  if (!initializedScroll) {
-    initializedScroll = true;
-
-    scrollTarget = p;
-    scrollCurrent = p;
-    lastReceivedProgress = p;
-
-    scrollAngleTargetDeg = THREE.MathUtils.clamp(
-      -p * SCROLL_MAX_DEG,
-      MIN_ANGLE_DEG,
-      MAX_ANGLE_DEG
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, 1.5)
     );
 
-    scrollAngleCurrentDeg = scrollAngleTargetDeg;
+    const initialWidth = Math.max(container.clientWidth, 1);
+    const initialHeight = Math.max(container.clientHeight, 1);
 
-    hasLeftTop = p > TOP_THRESHOLD;
-    hasLeftBottom = p < BOTTOM_THRESHOLD;
+    renderer.setSize(initialWidth, initialHeight);
 
-    return;
-  }
+    camera.aspect = initialWidth / initialHeight;
+    camera.updateProjectionMatrix();
 
-  const previous = lastReceivedProgress;
-  const deltaProgress = p - previous;
-  const changed = Math.abs(deltaProgress) > 0.000001;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.setClearColor(0x000000, 0);
 
-  if (changed) {
-    if (Math.abs(mouseOffsetDeg) > 0.0001 || bounceState) {
-      const currentVisibleAngle =
-        getFinalAngleDeg(performance.now());
+    container.appendChild(renderer.domElement);
+    const canvas = renderer.domElement;
 
-      scrollAngleCurrentDeg = currentVisibleAngle;
-      scrollAngleTargetDeg = currentVisibleAngle;
+    /* =========================================
+       ÉCLAIRAGE EKDYS
+    ========================================= */
+
+    scene.add(
+      new THREE.HemisphereLight(
+        0xffffff,
+        0x38313a,
+        1.8
+      )
+    );
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
+    keyLight.position.set(1.5, 4, 4);
+    scene.add(keyLight);
+
+    const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.8);
+    sideLight.position.set(-4, 1.5, 2);
+    scene.add(sideLight);
+
+    const rimLight = new THREE.DirectionalLight(0xd43b58, 1.4);
+    rimLight.position.set(-3, 1, -3);
+    scene.add(rimLight);
+
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    fillLight.position.set(0, -1, 5);
+    scene.add(fillLight);
+
+    const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    frontLight.position.set(0, 2, 6);
+    scene.add(frontLight);
+
+    /* =========================================
+       CHARGEMENT GLB / DRACO
+    ========================================= */
+
+    const dracoLoader = new DRACOLoader();
+
+    dracoLoader.setDecoderPath(
+      "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
+    );
+
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
+
+    const clock = new THREE.Clock();
+
+    let shirtPivot = null;
+    let shirtModel = null;
+    let modelSize = new THREE.Vector3();
+
+    const animatedShaders = [];
+
+    /* =========================================
+       CADRAGE RESPONSIVE
+    ========================================= */
+
+    function updateShirtFit() {
+      if (!shirtModel || !shirtPivot) return;
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      if (width <= 0 || height <= 0) return;
+
+      const visibleHeight =
+        2 * CAMERA_Z_FAR *
+        Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+
+      const visibleWidth = visibleHeight * (width / height);
+
+      let maxProjectedWidth = 0;
+
+      for (let i = 0; i <= 50; i++) {
+        const angle = THREE.MathUtils.degToRad(
+          MIN_ANGLE_DEG +
+          (MAX_ANGLE_DEG - MIN_ANGLE_DEG) * i / 50
+        );
+
+        const yaw = INITIAL_ROTATION_Y + angle;
+
+        const projectedWidth =
+          Math.abs(Math.cos(yaw)) * modelSize.x +
+          Math.abs(Math.sin(yaw)) * modelSize.z;
+
+        maxProjectedWidth = Math.max(
+          maxProjectedWidth,
+          projectedWidth
+        );
+      }
+
+      const widthScale =
+        (visibleWidth * 0.90) /
+        Math.max(maxProjectedWidth, 0.001);
+
+      const heightScale =
+        (visibleHeight * 0.90) /
+        Math.max(modelSize.y, 0.001);
+
+      const finalScale = Math.min(widthScale, heightScale);
+
+      shirtPivot.scale.setScalar(finalScale);
+
+      shirtPivot.position.set(
+        0,
+        -modelSize.y * finalScale * 0.02,
+        0
+      );
+    }
+
+    /* =========================================
+       CHARGEMENT DU MODÈLE SHIFT
+    ========================================= */
+
+    loader.load(
+      "./shift.glb",
+
+      (gltf) => {
+        shirtModel = gltf.scene;
+
+        const bounds = new THREE.Box3().setFromObject(shirtModel);
+
+        const center = bounds.getCenter(new THREE.Vector3());
+
+        modelSize = bounds.getSize(new THREE.Vector3());
+
+        if (
+          modelSize.y <= 0 ||
+          modelSize.x <= 0 ||
+          !Number.isFinite(modelSize.y)
+        ) {
+          loading.textContent = "ERREUR MODÈLE 3D";
+          console.error("Dimensions invalides du modèle SHIFT.");
+          return;
+        }
+
+        shirtModel.position.copy(center).negate();
+
+        shirtPivot = new THREE.Group();
+        shirtPivot.add(shirtModel);
+        scene.add(shirtPivot);
+
+        shirtPivot.rotation.y = INITIAL_ROTATION_Y;
+
+        /* =====================================
+           SHADERS DU TISSU
+        ===================================== */
+
+        shirtModel.traverse((object) => {
+          if (!object.isMesh) return;
+
+          object.frustumCulled = false;
+
+          const geometry = object.geometry;
+          geometry.computeBoundingBox();
+
+          const meshBounds = geometry.boundingBox;
+          const meshMinY = meshBounds.min.y;
+
+          const meshHeight = Math.max(
+            meshBounds.max.y - meshBounds.min.y,
+            0.001
+          );
+
+          const meshCenterX =
+            (meshBounds.min.x + meshBounds.max.x) / 2;
+
+          const meshWidth = Math.max(
+            meshBounds.max.x - meshBounds.min.x,
+            0.001
+          );
+
+          const materials = Array.isArray(object.material)
+            ? object.material
+            : [object.material];
+
+          materials.forEach((material) => {
+            const uniforms = {
+              uTime: { value: 0 },
+              uMinY: { value: meshMinY },
+              uInvHeight: { value: 1 / meshHeight },
+              uHeight: { value: meshHeight },
+              uCenterX: { value: meshCenterX },
+              uInvWidth: { value: 1 / meshWidth },
+              uSaturation: {
+                value: window.innerWidth >= 768 ? 1.08 : 1.04
+              },
+              uContrast: { value: 1.04 }
+            };
+
+            material.onBeforeCompile = (shader) => {
+              Object.assign(shader.uniforms, uniforms);
+
+              material.userData.windShader = shader;
+              animatedShaders.push(shader);
+
+              shader.vertexShader = shader.vertexShader.replace(
+                "#include <common>",
+                `#include <common>
+                uniform float uTime;
+                uniform float uMinY;
+                uniform float uInvHeight;
+                uniform float uHeight;
+                uniform float uCenterX;
+                uniform float uInvWidth;`
+              );
+
+              shader.vertexShader = shader.vertexShader.replace(
+                "#include <begin_vertex>",
+                `#include <begin_vertex>
+
+                float heightRatio = clamp(
+                  (position.y - uMinY) * uInvHeight,
+                  0.0,
+                  1.0
+                );
+
+                float hem = 1.0 - smoothstep(
+                  0.10,
+                  0.55,
+                  heightRatio
+                );
+
+                float sideRatio = abs(
+                  (position.x - uCenterX) * uInvWidth
+                );
+
+                float sides = smoothstep(
+                  0.25,
+                  0.85,
+                  sideRatio
+                );
+
+                float windWeight = max(
+                  hem,
+                  sides * 0.65
+                );
+
+                float wave = sin(
+                  uTime * 1.15 +
+                  position.y * 3.0 +
+                  position.x * 2.0
+                );
+
+                float wave2 = sin(
+                  uTime * 0.75 +
+                  position.y * 1.8 -
+                  position.x * 2.4
+                );
+
+                transformed.x +=
+                  wave * windWeight * uHeight * 0.006;
+
+                transformed.z +=
+                  wave2 * windWeight * uHeight * 0.004;
+                `
+              );
+
+              shader.fragmentShader = shader.fragmentShader.replace(
+                "#include <common>",
+                `#include <common>
+                uniform float uSaturation;
+                uniform float uContrast;`
+              );
+
+              shader.fragmentShader = shader.fragmentShader.replace(
+                "#include <color_fragment>",
+                `#include <color_fragment>
+
+                float luma = dot(
+                  diffuseColor.rgb,
+                  vec3(0.2126, 0.7152, 0.0722)
+                );
+
+                diffuseColor.rgb = mix(
+                  vec3(luma),
+                  diffuseColor.rgb,
+                  uSaturation
+                );
+
+                diffuseColor.rgb = (
+                  diffuseColor.rgb - vec3(0.5)
+                ) * uContrast + vec3(0.5);
+                `
+              );
+            };
+
+            material.customProgramCacheKey = () =>
+              "ekdys-shift-column-v14-scroll-flip-large";
+
+            material.needsUpdate = true;
+          });
+        });
+
+        updateShirtFit();
+
+        loading.style.display = "none";
+
+        console.log("EKDYS SHIFT : modèle chargé.");
+      },
+
+      (progress) => {
+        if (progress.total > 0) {
+          loading.textContent =
+            "EKDYS — LOADING " +
+            Math.round(progress.loaded / progress.total * 100) +
+            "%";
+        }
+      },
+
+      (error) => {
+        loading.textContent = "ERREUR DE CHARGEMENT";
+        console.error("Erreur de chargement SHIFT :", error);
+      }
+    );
+
+    /* =========================================
+       CALCUL DE LA ROTATION
+    ========================================= */
+
+    function getBounceOffsetDeg(now) {
+      if (!bounceState) return 0;
+
+      const elapsed = now - bounceState.startTime;
+
+      const cycleProgress =
+        (elapsed % BOUNCE_CYCLE_MS) / BOUNCE_CYCLE_MS;
+
+      const wave =
+        (1 - Math.cos(2 * Math.PI * cycleProgress)) / 2;
+
+      const availableRoom = bounceState.endpoint === "bottom"
+        ? MAX_ANGLE_DEG - scrollAngleCurrentDeg
+        : scrollAngleCurrentDeg - MIN_ANGLE_DEG;
+
+      const amplitude = Math.max(
+        0,
+        Math.min(BOUNCE_AMPLITUDE_DEG, availableRoom)
+      );
+
+      return bounceState.endpoint === "bottom"
+        ? amplitude * wave
+        : -amplitude * wave;
+    }
+
+    function getAutomaticAngleDeg(now) {
+      return scrollAngleCurrentDeg + getBounceOffsetDeg(now);
+    }
+
+    function getFinalAngleDeg(now) {
+      return THREE.MathUtils.clamp(
+        getAutomaticAngleDeg(now) + mouseOffsetDeg,
+        MIN_ANGLE_DEG,
+        MAX_ANGLE_DEG
+      );
+    }
+
+    function updateShirtRotation(now) {
+      if (!shirtPivot) return;
+
+      const angle = THREE.MathUtils.degToRad(
+        getFinalAngleDeg(now)
+      );
+
+      shirtPivot.rotation.y = INITIAL_ROTATION_Y + angle;
+    }
+
+    /* =========================================
+       OSCILLATION AUX LIMITES
+    ========================================= */
+
+    function startBounce(endpoint) {
+      bounceState = {
+        endpoint,
+        startTime: performance.now()
+      };
+    }
+
+    /* =========================================
+       RÉCEPTION DU SCROLL CARRD
+    ========================================= */
+
+    function receiveScrollProgress(progress) {
+      const p = THREE.MathUtils.clamp(progress, 0, 1);
+
+      if (!initializedScroll) {
+        initializedScroll = true;
+
+        scrollTarget = p;
+        scrollCurrent = p;
+        lastReceivedProgress = p;
+
+        scrollAngleTargetDeg = THREE.MathUtils.clamp(
+          -p * SCROLL_MAX_DEG,
+          MIN_ANGLE_DEG,
+          MAX_ANGLE_DEG
+        );
+
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
+
+        hasLeftTop = p > TOP_THRESHOLD;
+        hasLeftBottom = p < BOTTOM_THRESHOLD;
+
+        return;
+      }
+
+      const previous = lastReceivedProgress;
+      const deltaProgress = p - previous;
+      const changed = Math.abs(deltaProgress) > 0.000001;
+
+      if (changed) {
+        if (Math.abs(mouseOffsetDeg) > 0.0001 || bounceState) {
+          const currentVisibleAngle =
+            getFinalAngleDeg(performance.now());
+
+          scrollAngleCurrentDeg = currentVisibleAngle;
+          scrollAngleTargetDeg = currentVisibleAngle;
+
+          mouseOffsetDeg = 0;
+        }
+
+        scrollAngleTargetDeg = THREE.MathUtils.clamp(
+          scrollAngleTargetDeg - deltaProgress * SCROLL_MAX_DEG,
+          MIN_ANGLE_DEG,
+          MAX_ANGLE_DEG
+        );
+
+        if (bounceState) {
+          bounceState = null;
+        }
+
+        if (pendingBounce === "bottom" && p < BOTTOM_THRESHOLD) {
+          pendingBounce = null;
+        }
+
+        if (pendingBounce === "top" && p > TOP_THRESHOLD) {
+          pendingBounce = null;
+        }
+      }
+
+      if (p > TOP_THRESHOLD) hasLeftTop = true;
+      if (p < BOTTOM_THRESHOLD) hasLeftBottom = true;
+
+      if (
+        p >= BOTTOM_THRESHOLD &&
+        previous < BOTTOM_THRESHOLD &&
+        hasLeftBottom
+      ) {
+        pendingBounce = "bottom";
+        hasLeftBottom = false;
+      }
+
+      if (
+        p <= TOP_THRESHOLD &&
+        previous > TOP_THRESHOLD &&
+        hasLeftTop
+      ) {
+        pendingBounce = "top";
+        hasLeftTop = false;
+      }
+
+      lastReceivedProgress = p;
+      scrollTarget = p;
+    }
+
+    window.addEventListener("message", (event) => {
+      if (event.source !== window.parent) return;
+
+      if (
+        event.data &&
+        event.data.type === "EKDYS_SCROLL" &&
+        typeof event.data.progress === "number"
+      ) {
+        receiveScrollProgress(event.data.progress);
+      }
+    });
+
+    window.parent.postMessage(
+      { type: "EKDYS_COLUMN_READY" },
+      "*"
+    );
+
+    /* =========================================
+       SOURIS ET TACTILE
+    ========================================= */
+
+    canvas.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const now = performance.now();
+      const currentAngle = getFinalAngleDeg(now);
+
+      bounceState = null;
+      pendingBounce = null;
+
+      scrollAngleCurrentDeg = currentAngle;
+      scrollAngleTargetDeg = currentAngle;
       mouseOffsetDeg = 0;
+
+      isDragging = true;
+      activePointerId = event.pointerId;
+
+      dragStartX = event.clientX;
+      dragStartAngleDeg = currentAngle;
+
+      canvas.classList.add("dragging");
+
+      try {
+        canvas.setPointerCapture(event.pointerId);
+      } catch (error) {
+        console.warn("Capture du pointeur impossible.", error);
+      }
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (!isDragging || event.pointerId !== activePointerId) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const deltaX = event.clientX - dragStartX;
+
+      const desiredAngle =
+        dragStartAngleDeg + deltaX * DRAG_SENSITIVITY;
+
+      const limitedAngle = THREE.MathUtils.clamp(
+        desiredAngle,
+        MIN_ANGLE_DEG,
+        MAX_ANGLE_DEG
+      );
+
+      mouseOffsetDeg = limitedAngle - scrollAngleCurrentDeg;
+    });
+
+    function stopDragging(event) {
+      if (!isDragging) return;
+
+      if (
+        event &&
+        event.pointerId !== activePointerId
+      ) {
+        return;
+      }
+
+      const pointerId = activePointerId;
+
+      isDragging = false;
+      activePointerId = null;
+
+      canvas.classList.remove("dragging");
+
+      if (
+        pointerId !== null &&
+        canvas.hasPointerCapture(pointerId)
+      ) {
+        try {
+          canvas.releasePointerCapture(pointerId);
+        } catch (error) {
+          // La capture peut déjà avoir été libérée.
+        }
+      }
     }
 
-    scrollAngleTargetDeg = THREE.MathUtils.clamp(
-      scrollAngleTargetDeg - deltaProgress * SCROLL_MAX_DEG,
-      MIN_ANGLE_DEG,
-      MAX_ANGLE_DEG
-    );
+    canvas.addEventListener("pointerup", stopDragging);
+    canvas.addEventListener("pointercancel", stopDragging);
+    canvas.addEventListener("lostpointercapture", stopDragging);
 
-    if (bounceState) bounceState = null;
+    /* =========================================
+       REDIMENSIONNEMENT
+    ========================================= */
 
-    if (pendingBounce === "bottom" && p < BOTTOM_THRESHOLD) {
-      pendingBounce = null;
+    function resize() {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      if (!width || !height) return;
+
+      renderer.setSize(width, height);
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+
+      const saturation = window.innerWidth >= 768 ? 1.08 : 1.04;
+
+      animatedShaders.forEach((shader) => {
+        shader.uniforms.uSaturation.value = saturation;
+      });
+
+      updateShirtFit();
     }
 
-    if (pendingBounce === "top" && p > TOP_THRESHOLD) {
-      pendingBounce = null;
-    }
-  }
+    const resizeObserver = new ResizeObserver(resize);
 
-  if (p > TOP_THRESHOLD) hasLeftTop = true;
-  if (p < BOTTOM_THRESHOLD) hasLeftBottom = true;
+    resizeObserver.observe(container);
+    window.addEventListener("resize", resize);
 
-  if (
-    p >= BOTTOM_THRESHOLD &&
-    previous < BOTTOM_THRESHOLD &&
-    hasLeftBottom
-  ) {
-    pendingBounce = "bottom";
-    hasLeftBottom = false;
-  }
+    /* =========================================
+       BOUCLE DE RENDU
+    ========================================= */
 
-  if (
-    p <= TOP_THRESHOLD &&
-    previous > TOP_THRESHOLD &&
-    hasLeftTop
-  ) {
-    pendingBounce = "top";
-    hasLeftTop = false;
-  }
+    renderer.setAnimationLoop(() => {
+      const now = performance.now();
+      const time = clock.getElapsedTime();
 
-  lastReceivedProgress = p;
-  scrollTarget = p;
-}
+      scrollCurrent +=
+        (scrollTarget - scrollCurrent) * SCROLL_SMOOTHING;
 
-window.addEventListener("message", (event) => {
-  if (event.source !== window.parent) return;
+      if (!isDragging) {
+        scrollAngleCurrentDeg +=
+          (scrollAngleTargetDeg - scrollAngleCurrentDeg) *
+          ROTATION_SMOOTHING;
+      }
 
-  if (
-    event.data &&
-    event.data.type === "EKDYS_SCROLL" &&
-    typeof event.data.progress === "number"
-  ) {
-    receiveScrollProgress(event.data.progress);
-  }
-});
+      animatedShaders.forEach((shader) => {
+        shader.uniforms.uTime.value = time;
+      });
 
-/* SIGNAL DE DISPONIBILITÉ */
+      if (
+        pendingBounce === "bottom" &&
+        scrollCurrent >= 0.995
+      ) {
+        scrollCurrent = 1;
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
 
-window.parent.postMessage(
-  { type: "EKDYS_COLUMN_READY" },
-  "*"
-);
+        startBounce("bottom");
+        pendingBounce = null;
+      }
 
-/* SOURIS ET TACTILE */
+      if (
+        pendingBounce === "top" &&
+        scrollCurrent <= 0.005
+      ) {
+        scrollCurrent = 0;
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
 
-canvas.addEventListener("pointerdown", (event) => {
-  if (event.pointerType === "mouse" && event.button !== 0) {
-    return;
-  }
+        startBounce("top");
+        pendingBounce = null;
+      }
 
-  event.preventDefault();
+      updateShirtRotation(now);
+      renderer.render(scene, camera);
+    });
 
-  const now = performance.now();
-  const currentAngle = getFinalAngleDeg(now);
-
-  bounceState = null;
-  pendingBounce = null;
-
-  scrollAngleCurrentDeg = currentAngle;
-  scrollAngleTargetDeg = currentAngle;
-  mouseOffsetDeg = 0;
-
-  isDragging = true;
-  activePointerId = event.pointerId;
-
-  dragStartX = event.clientX;
-  dragStartAngleDeg = currentAngle;
-
-  canvas.classList.add("dragging");
-
-  try {
-    canvas.setPointerCapture(event.pointerId);
-  } catch (error) {
-    console.warn("Capture du pointeur impossible.", error);
-  }
-});
-
-canvas.addEventListener("pointermove", (event) => {
-  if (!isDragging || event.pointerId !== activePointerId) {
-    return;
-  }
-
-  event.preventDefault();
-
-  const deltaX = event.clientX - dragStartX;
-
-  const desiredAngle =
-    dragStartAngleDeg + deltaX * DRAG_SENSITIVITY;
-
-  const limitedAngle = THREE.MathUtils.clamp(
-    desiredAngle,
-    MIN_ANGLE_DEG,
-    MAX_ANGLE_DEG
-  );
-
-  mouseOffsetDeg = limitedAngle - scrollAngleCurrentDeg;
-});
-
-function stopDragging(event) {
-  if (!isDragging) return;
-
-  if (
-    event &&
-    event.pointerId !== activePointerId
-  ) {
-    return;
-  }
-
-  const pointerId = activePointerId;
-
-  isDragging = false;
-  activePointerId = null;
-
-  canvas.classList.remove("dragging");
-
-  if (
-    pointerId !== null &&
-    canvas.hasPointerCapture(pointerId)
-  ) {
-    try {
-      canvas.releasePointerCapture(pointerId);
-    } catch (error) {
-      // Capture déjà libérée.
-    }
-  }
-}
-
-canvas.addEventListener("pointerup", stopDragging);
-canvas.addEventListener("pointercancel", stopDragging);
-canvas.addEventListener("lostpointercapture", stopDragging);
-
-/* REDIMENSIONNEMENT */
-
-function resize() {
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-
-  if (!width || !height) return;
-
-  renderer.setSize(width, height);
-
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-
-  const saturation = window.innerWidth >= 768 ? 1.08 : 1.04;
-
-  animatedShaders.forEach((shader) => {
-    shader.uniforms.uSaturation.value = saturation;
-  });
-
-  updateShirtFit();
-}
-
-const resizeObserver = new ResizeObserver(resize);
-
-resizeObserver.observe(container);
-
-window.addEventListener("resize", resize);
-
-/* BOUCLE DE RENDU */
-
-renderer.setAnimationLoop(() => {
-  const now = performance.now();
-  const time = clock.getElapsedTime();
-
-  scrollCurrent +=
-    (scrollTarget - scrollCurrent) * SCROLL_SMOOTHING;
-
-  if (!isDragging) {
-    scrollAngleCurrentDeg +=
-      (scrollAngleTargetDeg - scrollAngleCurrentDeg) *
-      ROTATION_SMOOTHING;
-  }
-
-  animatedShaders.forEach((shader) => {
-    shader.uniforms.uTime.value = time;
-  });
-
-  if (
-    pendingBounce === "bottom" &&
-    scrollCurrent >= 0.995
-  ) {
-    scrollCurrent = 1;
-    scrollAngleCurrentDeg = scrollAngleTargetDeg;
-
-    startBounce("bottom");
-    pendingBounce = null;
-  }
-
-  if (
-    pendingBounce === "top" &&
-    scrollCurrent <= 0.005
-  ) {
-    scrollCurrent = 0;
-    scrollAngleCurrentDeg = scrollAngleTargetDeg;
-
-    startBounce("top");
-    pendingBounce = null;
-  }
-
-  updateShirtRotation(now);
-
-  renderer.render(scene, camera);
-});
-
-resize();
-
-</script>
+    resize();
+  </script>
 </body>
 </html>
