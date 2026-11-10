@@ -94,23 +94,20 @@ const loading = document.querySelector("#shift-loading");
 const scene = new THREE.Scene();
 
 /* =========================================
-   PARAMÈTRES DE ROTATION
-   IDENTIQUES À LA PREMIÈRE FENÊTRE
+   ROTATION — PARAMÈTRES
 ========================================= */
 
 const INITIAL_ROTATION_Y = 0.34;
+
 const SCROLL_ROTATION_Y = 2.5;
 
 const MAX_ROTATION = THREE.MathUtils.degToRad(45);
-
-/* Lissage identique à la première fenêtre */
 
 let scrollTarget = 0;
 let scrollCurrent = 0;
 
 /* =========================================
-   CAMÉRA
-   POSITION FIXE : AUCUN ZOOM
+   CAMÉRA — FIXE, SANS ZOOM
 ========================================= */
 
 const CAMERA_Z = 15.0;
@@ -154,7 +151,6 @@ container.appendChild(renderer.domElement);
 
 /* =========================================
    ÉCLAIRAGE
-   IDENTIQUE À LA PREMIÈRE FENÊTRE
 ========================================= */
 
 scene.add(
@@ -202,8 +198,6 @@ loader.setDRACOLoader(dracoLoader);
    VARIABLES
 ========================================= */
 
-const clock = new THREE.Clock();
-
 let shirtPivot = null;
 let shirtModel = null;
 
@@ -214,7 +208,6 @@ const animatedShaders = [];
 
 /* =========================================
    CADRAGE RESPONSIVE
-   T-SHIRT EN GROS PLAN
 ========================================= */
 
 function updateShirtFit() {
@@ -313,9 +306,7 @@ loader.load(
                 0
             );
 
-            /* =================================
-               ANIMATION TISSU ET COULEURS
-            ================================= */
+            /* ANIMATION TISSU ET COULEURS */
 
             shirtModel.traverse((object) => {
 
@@ -514,7 +505,6 @@ loader.load(
 
 /* =========================================
    RÉCEPTION DU SCROLL
-   MÊME PRINCIPE QUE LA PREMIÈRE FENÊTRE
 ========================================= */
 
 window.addEventListener("message", (event) => {
@@ -565,30 +555,25 @@ window.addEventListener("resize", resize);
 
 /* =========================================
    ANIMATION PRINCIPALE
-   ROTATION UNIQUEMENT AU SCROLL
+   AUCUNE ROTATION TEMPORELLE
 ========================================= */
 
 renderer.setAnimationLoop(() => {
 
-    const time = clock.getElapsedTime();
-
-    /* LISSAGE IDENTIQUE À LA PREMIÈRE FENÊTRE */
+    /* LISSAGE DU SCROLL */
 
     scrollCurrent +=
         (scrollTarget - scrollCurrent) * 0.09;
 
-    /* ANIMATION DU TISSU */
+    /* CONSERVATION DE L'EFFET DE TISSU */
 
     animatedShaders.forEach((shader) => {
-        shader.uniforms.uTime.value = time;
+        shader.uniforms.uTime.value = 0;
     });
 
-    if (shirtPivot) {
+    /* ROTATION UNIQUEMENT SELON LE SCROLL */
 
-        /*
-           PUISSANCE DE ROTATION : 2.5
-           LIMITE MAXIMALE : 45 DEGRÉS
-        */
+    if (shirtPivot) {
 
         const rotationAmount = Math.min(
             scrollCurrent * SCROLL_ROTATION_Y,
@@ -600,12 +585,7 @@ renderer.setAnimationLoop(() => {
 
     }
 
-    /*
-       CAMÉRA FIXE
-       AUCUN ZOOM
-       ÉCHELLE FIXE
-       AUCUNE ROTATION AUTOMATIQUE
-    */
+    /* CAMÉRA ET ÉCHELLE TOUJOURS FIXES */
 
     renderer.render(scene, camera);
 
