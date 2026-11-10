@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -11,7 +10,8 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       height: 100%;
       margin: 0;
@@ -24,6 +24,7 @@
       position: relative;
       width: 100%;
       height: 100%;
+      min-width: 0;
       overflow: hidden;
       background: transparent;
       isolation: isolate;
@@ -98,28 +99,30 @@
     const loading = document.querySelector("#shift-loading");
 
     /* =========================================
-       PARAMÈTRES
+       PARAMÈTRES GÉNÉRAUX
     ========================================= */
 
     const INITIAL_ROTATION_Y = 0.34;
 
-    // Rotation automatique sur toute la progression
+    // Une progression complète du scroll représente 25° de rotation.
     const SCROLL_MAX_DEG = 25;
 
-    // Limites absolues autour de l'orientation initiale
+    // Limites absolues autour de l'orientation initiale.
     const MIN_ANGLE_DEG = -25;
     const MAX_ANGLE_DEG = 25;
 
+    // Lissage de la rotation et de la progression.
+    const ROTATION_SMOOTHING = 0.12;
     const SCROLL_SMOOTHING = 0.09;
 
-    // Oscillations aux extrémités
-    const BOUNCE_AMPLITUDE_DEG = 6;
-    const BOUNCE_CYCLE_MS = 550;
+    // Oscillation infinie quand le scroll atteint le haut ou le bas.
+    const BOUNCE_AMPLITUDE_DEG = 9;
+    const BOUNCE_CYCLE_MS = 780;
 
-    // Contrôle souris / doigt
+    // Contrôle souris / doigt.
     const DRAG_SENSITIVITY = 0.25;
 
-    // Caméra fixe
+    // Caméra fixe.
     const CAMERA_Z = 15;
 
     const TOP_THRESHOLD = 0.001;
@@ -137,22 +140,24 @@
 
     let hasLeftTop = false;
     let hasLeftBottom = false;
-
     let pendingBounce = null;
     let bounceState = null;
 
-    let topLimitHits = 0;
-    let bottomLimitHits = 0;
-
     /* =========================================
-       ÉTAT DE LA ROTATION MANUELLE
+       ÉTAT DE LA ROTATION
+
+       La rotation est accumulée à partir des
+       variations du scroll. Après un drag, le
+       prochain mouvement de scroll repart de
+       l'angle exact choisi avec la souris.
     ========================================= */
 
+    let scrollAngleTargetDeg = 0;
+    let scrollAngleCurrentDeg = 0;
     let mouseOffsetDeg = 0;
 
     let isDragging = false;
     let activePointerId = null;
-
     let dragStartX = 0;
     let dragStartAngleDeg = 0;
 
@@ -161,7 +166,6 @@
     ========================================= */
 
     const scene = new THREE.Scene();
-
     scene.fog = new THREE.FogExp2(0x080808, 0.002);
 
     /* =========================================
@@ -193,14 +197,12 @@
     );
 
     renderer.setSize(1, 1);
-
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.setClearColor(0x000000, 0);
 
     container.appendChild(renderer.domElement);
-
     const canvas = renderer.domElement;
 
     /* =========================================
@@ -215,38 +217,23 @@
       )
     );
 
-    const keyLight = new THREE.DirectionalLight(
-      0xffffff,
-      3.2
-    );
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
     keyLight.position.set(1.5, 4, 4);
     scene.add(keyLight);
 
-    const sideLight = new THREE.DirectionalLight(
-      0xe8eaf2,
-      1.8
-    );
+    const sideLight = new THREE.DirectionalLight(0xe8eaf2, 1.8);
     sideLight.position.set(-4, 1.5, 2);
     scene.add(sideLight);
 
-    const rimLight = new THREE.DirectionalLight(
-      0xd43b58,
-      1.4
-    );
+    const rimLight = new THREE.DirectionalLight(0xd43b58, 1.4);
     rimLight.position.set(-3, 1, -3);
     scene.add(rimLight);
 
-    const fillLight = new THREE.DirectionalLight(
-      0xffffff,
-      1.2
-    );
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
     fillLight.position.set(0, -1, 5);
     scene.add(fillLight);
 
-    const frontLight = new THREE.DirectionalLight(
-      0xffffff,
-      0.8
-    );
+    const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
     frontLight.position.set(0, 2, 6);
     scene.add(frontLight);
 
@@ -255,7 +242,6 @@
     ========================================= */
 
     const dracoLoader = new DRACOLoader();
-
     dracoLoader.setDecoderPath(
       "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
     );
@@ -267,14 +253,14 @@
 
     let shirtPivot = null;
     let shirtModel = null;
-
     let modelSize = new THREE.Vector3();
 
     const animatedShaders = [];
 
     /* =========================================
        CADRAGE RESPONSIVE
-       La largeur dépend réellement de la colonne.
+       La largeur dépend de la vraie largeur
+       disponible dans la colonne Carrd.
     ========================================= */
 
     function updateShirtFit() {
@@ -293,7 +279,6 @@
 
       const visibleWidth = visibleHeight * aspect;
 
-      // Largeur maximale projetée sur toute la rotation
       const minYaw =
         INITIAL_ROTATION_Y +
         THREE.MathUtils.degToRad(MIN_ANGLE_DEG);
@@ -327,20 +312,14 @@
       );
 
       const heightScale =
-        visibleHeight * 0.96 /
-        Math.max(modelSize.y, 0.001);
+        visibleHeight * 0.96 / Math.max(modelSize.y, 0.001);
 
       const widthScale =
-        visibleWidth * 0.96 /
-        maximumProjectedWidth;
+        visibleWidth * 0.96 / maximumProjectedWidth;
 
-      const finalScale = Math.min(
-        heightScale,
-        widthScale
-      );
+      const finalScale = Math.min(heightScale, widthScale);
 
       shirtPivot.scale.setScalar(finalScale);
-
       shirtPivot.position.set(
         0,
         -modelSize.y * finalScale * 0.02,
@@ -349,26 +328,17 @@
     }
 
     /* =========================================
-       CHARGEMENT DU MODÈLE
+       CHARGEMENT DU MODÈLE SHIFT
     ========================================= */
 
     loader.load(
       "./shift.glb",
-
       (gltf) => {
         shirtModel = gltf.scene;
 
-        const bounds = new THREE.Box3().setFromObject(
-          shirtModel
-        );
-
-        const center = bounds.getCenter(
-          new THREE.Vector3()
-        );
-
-        modelSize = bounds.getSize(
-          new THREE.Vector3()
-        );
+        const bounds = new THREE.Box3().setFromObject(shirtModel);
+        const center = bounds.getCenter(new THREE.Vector3());
+        modelSize = bounds.getSize(new THREE.Vector3());
 
         if (modelSize.y <= 0 || modelSize.x <= 0) {
           loading.textContent = "ERREUR MODÈLE 3D";
@@ -379,7 +349,6 @@
         shirtModel.position.sub(center);
 
         shirtPivot = new THREE.Group();
-
         shirtPivot.add(shirtModel);
         scene.add(shirtPivot);
 
@@ -387,6 +356,8 @@
 
         /* =====================================
            SHADERS DU TISSU
+           Ondulation légère + saturation et
+           contraste conservés.
         ===================================== */
 
         shirtModel.traverse((object) => {
@@ -395,11 +366,9 @@
           object.frustumCulled = false;
 
           const geometry = object.geometry;
-
           geometry.computeBoundingBox();
 
           const meshBounds = geometry.boundingBox;
-
           const meshMinY = meshBounds.min.y;
 
           const meshHeight = Math.max(
@@ -435,9 +404,7 @@
 
             material.onBeforeCompile = (shader) => {
               Object.assign(shader.uniforms, uniforms);
-
               material.userData.windShader = shader;
-
               animatedShaders.push(shader);
 
               shader.vertexShader = shader.vertexShader.replace(
@@ -532,19 +499,16 @@
             };
 
             material.customProgramCacheKey = () =>
-              "ekdys-shift-column-v12";
+              "ekdys-shift-column-v13-scroll-flip";
 
             material.needsUpdate = true;
           });
         });
 
         updateShirtFit();
-
         loading.style.display = "none";
-
         console.log("EKDYS SHIFT : modèle chargé.");
       },
-
       (progress) => {
         if (progress.total > 0) {
           loading.textContent =
@@ -553,7 +517,6 @@
             "%";
         }
       },
-
       (error) => {
         loading.textContent = "ERREUR DE CHARGEMENT";
         console.error("Erreur de chargement SHIFT :", error);
@@ -561,11 +524,76 @@
     );
 
     /* =========================================
-       SYNCHRONISATION AVEC CARRD
+       CALCUL DE LA ROTATION
+    ========================================= */
 
-       L'iframe annonce qu'elle est prête.
-       Le parent lui répond avec la position
-       actuelle du scroll.
+    function getBounceOffsetDeg(now) {
+      if (!bounceState) return 0;
+
+      const elapsed = now - bounceState.startTime;
+      const cycleProgress =
+        (elapsed % BOUNCE_CYCLE_MS) / BOUNCE_CYCLE_MS;
+
+      // Courbe douce : départ lent, inversion progressive,
+      // puis retour sans à-coup à la position de départ.
+      const wave =
+        (1 - Math.cos(2 * Math.PI * cycleProgress)) / 2;
+
+      const availableRoom = bounceState.endpoint === "bottom"
+        ? MAX_ANGLE_DEG - scrollAngleCurrentDeg
+        : scrollAngleCurrentDeg - MIN_ANGLE_DEG;
+
+      const amplitude = Math.max(
+        0,
+        Math.min(BOUNCE_AMPLITUDE_DEG, availableRoom)
+      );
+
+      // En bas : le mouvement repart vers le haut de l'angle.
+      // En haut : le mouvement repart vers le bas de l'angle.
+      return bounceState.endpoint === "bottom"
+        ? amplitude * wave
+        : -amplitude * wave;
+    }
+
+    function getAutomaticAngleDeg(now) {
+      return scrollAngleCurrentDeg + getBounceOffsetDeg(now);
+    }
+
+    function getFinalAngleDeg(now) {
+      return THREE.MathUtils.clamp(
+        getAutomaticAngleDeg(now) + mouseOffsetDeg,
+        MIN_ANGLE_DEG,
+        MAX_ANGLE_DEG
+      );
+    }
+
+    function updateShirtRotation(now) {
+      if (!shirtPivot) return;
+
+      const angle = THREE.MathUtils.degToRad(
+        getFinalAngleDeg(now)
+      );
+
+      shirtPivot.rotation.y = INITIAL_ROTATION_Y + angle;
+    }
+
+    /* =========================================
+       OSCILLATION AUX LIMITES
+
+       Elle tourne en boucle tant que la page
+       reste bloquée tout en haut ou tout en bas.
+       Dès que le scroll repart, elle s'arrête.
+    ========================================= */
+
+    function startBounce(endpoint) {
+      bounceState = {
+        endpoint,
+        startTime: performance.now()
+      };
+    }
+
+    /* =========================================
+       RÉCEPTION DU SCROLL CARRD
     ========================================= */
 
     function receiveScrollProgress(progress) {
@@ -578,54 +606,62 @@
         scrollCurrent = p;
         lastReceivedProgress = p;
 
+        // Position cohérente même si la page est rechargée
+        // alors qu'elle se trouve déjà au milieu.
+        scrollAngleTargetDeg = THREE.MathUtils.clamp(
+          -p * SCROLL_MAX_DEG,
+          MIN_ANGLE_DEG,
+          MAX_ANGLE_DEG
+        );
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
+
         hasLeftTop = p > TOP_THRESHOLD;
         hasLeftBottom = p < BOTTOM_THRESHOLD;
-
         return;
       }
 
       const previous = lastReceivedProgress;
+      const deltaProgress = p - previous;
+      const changed = Math.abs(deltaProgress) > 0.000001;
 
-      const changed = Math.abs(p - previous) > 0.00001;
-
-      // Dès que le scroll reprend, la commande automatique reprend
       if (changed) {
-        mouseOffsetDeg = 0;
+        // On ne recale l'angle que si une commande manuelle ou une
+        // oscillation était active. En scroll normal, on accumule le
+        // delta sur la cible pour ne pas perdre de rotation à cause
+        // du lissage entre deux événements de scroll.
+        if (Math.abs(mouseOffsetDeg) > 0.0001 || bounceState) {
+          const currentVisibleAngle = getFinalAngleDeg(performance.now());
+
+          scrollAngleCurrentDeg = currentVisibleAngle;
+          scrollAngleTargetDeg = currentVisibleAngle;
+          mouseOffsetDeg = 0;
+        }
+
+        // Le mouvement reprend dans le sens réel du scroll.
+        // Progression vers le bas = angle qui diminue.
+        // Progression vers le haut = angle qui augmente.
+        scrollAngleTargetDeg = THREE.MathUtils.clamp(
+          scrollAngleTargetDeg - deltaProgress * SCROLL_MAX_DEG,
+          MIN_ANGLE_DEG,
+          MAX_ANGLE_DEG
+        );
+
+        // Quitter une extrémité interrompt immédiatement son oscillation.
+        if (bounceState) bounceState = null;
+
+        if (pendingBounce === "bottom" && p < BOTTOM_THRESHOLD) {
+          pendingBounce = null;
+        }
+
+        if (pendingBounce === "top" && p > TOP_THRESHOLD) {
+          pendingBounce = null;
+        }
       }
 
       if (p > TOP_THRESHOLD) hasLeftTop = true;
       if (p < BOTTOM_THRESHOLD) hasLeftBottom = true;
 
-      if (
-        pendingBounce === "bottom" &&
-        p < BOTTOM_THRESHOLD
-      ) {
-        pendingBounce = null;
-      }
-
-      if (
-        pendingBounce === "top" &&
-        p > TOP_THRESHOLD
-      ) {
-        pendingBounce = null;
-      }
-
-      if (bounceState && changed) {
-        if (
-          bounceState.endpoint === "bottom" &&
-          p < BOTTOM_THRESHOLD
-        ) {
-          bounceState = null;
-        }
-
-        if (
-          bounceState.endpoint === "top" &&
-          p > TOP_THRESHOLD
-        ) {
-          bounceState = null;
-        }
-      }
-
+      // Détection du passage en bas de page.
       if (
         p >= BOTTOM_THRESHOLD &&
         previous < BOTTOM_THRESHOLD &&
@@ -635,6 +671,7 @@
         hasLeftBottom = false;
       }
 
+      // Détection du retour tout en haut de page.
       if (
         p <= TOP_THRESHOLD &&
         previous > TOP_THRESHOLD &&
@@ -660,79 +697,12 @@
       }
     });
 
-    // Le parent écoute le message READY et renvoie le scroll actuel
+    // L'iframe annonce qu'elle est prête ; Carrd lui renvoie
+    // alors la position actuelle de la page.
     window.parent.postMessage(
       { type: "EKDYS_COLUMN_READY" },
       "*"
     );
-
-    /* =========================================
-       ALLERS-RETOURS AUX EXTRÉMITÉS
-    ========================================= */
-
-    function startBounce(endpoint) {
-      let cycles;
-
-      if (endpoint === "bottom") {
-        bottomLimitHits++;
-        cycles = bottomLimitHits;
-      } else {
-        topLimitHits++;
-        cycles = topLimitHits;
-      }
-
-      bounceState = {
-        endpoint,
-        startTime: performance.now(),
-        cycles,
-        duration: cycles * BOUNCE_CYCLE_MS
-      };
-    }
-
-    function getBounceOffsetDeg(now) {
-      if (!bounceState) return 0;
-
-      const elapsed = now - bounceState.startTime;
-
-      if (elapsed >= bounceState.duration) {
-        bounceState = null;
-        return 0;
-      }
-
-      const cycleProgress =
-        (elapsed % BOUNCE_CYCLE_MS) / BOUNCE_CYCLE_MS;
-
-      return BOUNCE_AMPLITUDE_DEG *
-        (1 - Math.cos(2 * Math.PI * cycleProgress)) / 2;
-    }
-
-    /* =========================================
-       CALCUL DE LA ROTATION
-    ========================================= */
-
-    function getAutomaticAngleDeg(now) {
-      const scrollAngle = -scrollCurrent * SCROLL_MAX_DEG;
-
-      return scrollAngle + getBounceOffsetDeg(now);
-    }
-
-    function getFinalAngleDeg(now) {
-      return THREE.MathUtils.clamp(
-        getAutomaticAngleDeg(now) + mouseOffsetDeg,
-        MIN_ANGLE_DEG,
-        MAX_ANGLE_DEG
-      );
-    }
-
-    function updateShirtRotation(now) {
-      if (!shirtPivot) return;
-
-      const angle = THREE.MathUtils.degToRad(
-        getFinalAngleDeg(now)
-      );
-
-      shirtPivot.rotation.y = INITIAL_ROTATION_Y + angle;
-    }
 
     /* =========================================
        SOURIS ET TACTILE
@@ -745,11 +715,21 @@
 
       event.preventDefault();
 
+      const now = performance.now();
+      const currentAngle = getFinalAngleDeg(now);
+
+      // La manipulation manuelle prend la main sur l'oscillation.
+      bounceState = null;
+      pendingBounce = null;
+
+      scrollAngleCurrentDeg = currentAngle;
+      scrollAngleTargetDeg = currentAngle;
+      mouseOffsetDeg = 0;
+
       isDragging = true;
       activePointerId = event.pointerId;
-
       dragStartX = event.clientX;
-      dragStartAngleDeg = getFinalAngleDeg(performance.now());
+      dragStartAngleDeg = currentAngle;
 
       canvas.classList.add("dragging");
 
@@ -768,7 +748,6 @@
       event.preventDefault();
 
       const deltaX = event.clientX - dragStartX;
-
       const desiredAngle =
         dragStartAngleDeg + deltaX * DRAG_SENSITIVITY;
 
@@ -778,11 +757,7 @@
         MAX_ANGLE_DEG
       );
 
-      const automaticAngle = getAutomaticAngleDeg(
-        performance.now()
-      );
-
-      mouseOffsetDeg = limitedAngle - automaticAngle;
+      mouseOffsetDeg = limitedAngle - scrollAngleCurrentDeg;
     });
 
     function stopDragging(event) {
@@ -796,7 +771,6 @@
       }
 
       const pointerId = activePointerId;
-
       isDragging = false;
       activePointerId = null;
 
@@ -808,7 +782,9 @@
       ) {
         try {
           canvas.releasePointerCapture(pointerId);
-        } catch (error) {}
+        } catch (error) {
+          // La capture peut déjà avoir été libérée par le navigateur.
+        }
       }
     }
 
@@ -842,7 +818,6 @@
 
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
-
     window.addEventListener("resize", resize);
 
     /* =========================================
@@ -853,42 +828,49 @@
       const now = performance.now();
       const time = clock.getElapsedTime();
 
-      // Lissage de la rotation liée au scroll
+      // Progression de scroll lissée pour détecter les extrémités.
       scrollCurrent +=
         (scrollTarget - scrollCurrent) * SCROLL_SMOOTHING;
 
-      // Animation légère du tissu
+      // Rotation cible lissée séparément.
+      if (!isDragging) {
+        scrollAngleCurrentDeg +=
+          (scrollAngleTargetDeg - scrollAngleCurrentDeg) *
+          ROTATION_SMOOTHING;
+      }
+
+      // Animation légère du tissu.
       animatedShaders.forEach((shader) => {
         shader.uniforms.uTime.value = time;
       });
 
-      // Arrivée effective en bas
+      // Arrivée effective en bas : démarrage du flip aller-retour.
       if (
         pendingBounce === "bottom" &&
         scrollCurrent >= 0.995
       ) {
         scrollCurrent = 1;
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
         startBounce("bottom");
         pendingBounce = null;
       }
 
-      // Arrivée effective en haut
+      // Arrivée effective en haut : flip dans le sens opposé.
       if (
         pendingBounce === "top" &&
         scrollCurrent <= 0.005
       ) {
         scrollCurrent = 0;
+        scrollAngleCurrentDeg = scrollAngleTargetDeg;
         startBounce("top");
         pendingBounce = null;
       }
 
       updateShirtRotation(now);
-
       renderer.render(scene, camera);
     });
 
     resize();
-
   </script>
 </body>
 </html>
